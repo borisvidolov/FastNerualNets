@@ -1,3 +1,5 @@
+// Created by Boris Vidolov on 02/14/2014
+// Published under Apache 2.0 licence.
 // stdafx.h : include file for standard system include files,
 // or project specific include files that are used frequently, but
 // are changed infrequently

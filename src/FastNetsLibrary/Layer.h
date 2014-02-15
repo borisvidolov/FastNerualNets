@@ -2,6 +2,7 @@
 // Published under Apache 2.0 licence.
 #pragma once
 #include <Windows.h>
+#include <boost/random/mersenne_twister.hpp>
 
 namespace FasteNets
 {

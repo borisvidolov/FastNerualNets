@@ -1,3 +1,5 @@
+// Created by Boris Vidolov on 02/14/2014
+// Published under Apache 2.0 licence.
 #pragma once
 
 // Including SDKDDKVer.h defines the highest available Windows platform.
