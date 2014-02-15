@@ -3,6 +3,20 @@
 *.lo
 *.o
 
+#solution files
+*.suo
+*.sdf
+
+#Temporary files
+*.pdb
+*.tlog
+*.log
+*.pch
+*.idb
+*.lastbuildstate
+*.opensdf
+Debug
+
 # Compiled Dynamic libraries
 *.so
 *.dylib
