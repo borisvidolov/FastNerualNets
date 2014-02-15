@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FastNetsLibrary", "FastNetsLibrary\FastNetsLibrary.vcxproj", "{892A54D7-5BE0-4C78-99C9-394F7C8CA632}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FastNetsTestApp", "FastNetsTestApp\FastNetsTestApp.vcxproj", "{DCAC0F10-A388-407B-B627-9ADBFB6DDFE7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{892A54D7-5BE0-4C78-99C9-394F7C8CA632}.Debug|Win32.ActiveCfg = Debug|Win32
+		{892A54D7-5BE0-4C78-99C9-394F7C8CA632}.Debug|Win32.Build.0 = Debug|Win32
+		{892A54D7-5BE0-4C78-99C9-394F7C8CA632}.Release|Win32.ActiveCfg = Release|Win32
+		{892A54D7-5BE0-4C78-99C9-394F7C8CA632}.Release|Win32.Build.0 = Release|Win32
+		{DCAC0F10-A388-407B-B627-9ADBFB6DDFE7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DCAC0F10-A388-407B-B627-9ADBFB6DDFE7}.Debug|Win32.Build.0 = Debug|Win32
+		{DCAC0F10-A388-407B-B627-9ADBFB6DDFE7}.Release|Win32.ActiveCfg = Release|Win32
+		{DCAC0F10-A388-407B-B627-9ADBFB6DDFE7}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
