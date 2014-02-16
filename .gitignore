@@ -15,6 +15,7 @@
 *.idb
 *.lastbuildstate
 *.opensdf
+ipch
 Debug
 
 # Compiled Dynamic libraries
