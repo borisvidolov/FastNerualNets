@@ -33,12 +33,18 @@
     <ClInclude Include="File.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FloatingPoint.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Statics.cpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FloatingPoint.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>

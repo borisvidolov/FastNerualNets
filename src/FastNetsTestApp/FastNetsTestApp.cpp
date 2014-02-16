@@ -36,6 +36,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		l1.WriteToFile("foo");
 		Layer<8, 8> l2("foo");
 		remove("foo");
+		if (!l1.IsSame(l2))
+			throw std::string("Unpersisted layer is different.");
 		cout << "Succeeded" << endl;
 
 		//Networks:
@@ -48,6 +50,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		n.WriteToFile("bar");
 		Net<16, Net<8, Net<8, Net<8>>>> n1("bar");
 		remove("bar");
+		if (!n.IsSame(n1))
+			throw std::string("The networks are different.");
+
 		cout << "Succeeded." << endl;
 	}
 	catch(string error)

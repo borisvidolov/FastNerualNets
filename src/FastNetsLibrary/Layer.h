@@ -6,6 +6,7 @@
 #include <time.h>
 #include <sstream>
 #include "File.h"
+#include "FloatingPoint.h"
 
 void InitializeOmp();
 namespace FastNets
@@ -124,6 +125,17 @@ public:
 		read = fread(mC, sizeof(mC[0]), INPUT, fp);
 		if (INPUT != read)
 			throw std::string("Cannot read all of the output biases!");
+	}
+
+	bool IsSame(const Layer& other) const
+	{
+		if (!AreSame<FloatingPoint>((FloatingPoint*)mWeights, (FloatingPoint*)other.mWeights, INPUT*OUTPUT))
+			return false;
+		if (!AreSame<FloatingPoint>((FloatingPoint*)mB, (FloatingPoint*)other.mB, OUTPUT))
+			return false;
+		if (!AreSame<FloatingPoint>((FloatingPoint*)mC, (FloatingPoint*)other.mC, INPUT))
+			return false;
+		return true;
 	}
 
 /* Internal implementaiton */
