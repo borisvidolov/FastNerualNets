@@ -3,7 +3,9 @@
 #pragma once
 #include <Windows.h>
 #include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
 #include <omp.h>
+#include <time.h>
 
 namespace FasteNets
 {
@@ -13,12 +15,11 @@ initialize the OMP threads to achieve maximum performance gain.*/
 template<int INPUT, int OUTPUT, class FloatingPoint = double>
 class Layer
 {
-	_CRT_ALIGN(32) FloatingPoint Weights[OUTPUT][INPUT];
-	_CRT_ALIGN(32) FloatingPoint ReverseWeights[INPUT][OUTPUT];//Cache for faster calculation
-	_CRT_ALIGN(32) FloatingPoint B[OUTPUT];//Input Bias
-	_CRT_ALIGN(32) FloatingPoint C[INPUT];//Output Bias
+	_CRT_ALIGN(32) FloatingPoint mWeights[OUTPUT][INPUT];
+	_CRT_ALIGN(32) FloatingPoint mReverseWeights[INPUT][OUTPUT];//Cache for faster calculation
+	_CRT_ALIGN(32) FloatingPoint mB[OUTPUT];//Input Bias
+	_CRT_ALIGN(32) FloatingPoint mC[INPUT];//Output Bias
 
-	CRITICAL_SECTION ReverseLock;
 	bool  mReverseWeightsDirty;
 private:
 	Layer(const Layer&){}//No copy
@@ -29,20 +30,22 @@ public:
 	{
 		ValidateTemplateParameters();
 		InitializeOmp();
-		InitializeCriticalSection(&global);
+
 		boost::mt11213b gen;
 		gen.seed((unsigned __int32)time(NULL));
 		const int max = 10000;
 		boost::random::uniform_int_distribution<> dist(1, max);
-		for (int i = 0; i < Output; ++i)
-			for (int j = 0; j < Input; ++j)
+		for (int i = 0; i < OUTPUT; ++i)
+		{
+			for (int j = 0; j < INPUT; ++j)
 			{ 
-				Weights[i][j] = GetRandomWeight(dist, gen, max);
+				mWeights[i][j] = GetRandomWeight(dist, gen, max);
 			}
-		for (int i = 0; i < Output; ++i)
-			B[i] = GetRandomWeight(dist, gen, max);
-		for (int i = 0; i < Input; ++i)
-			C[i] = GetRandomWeight(dist, gen, max);
+		}
+		for (int i = 0; i < OUTPUT; ++i)
+			mB[i] = GetRandomWeight(dist, gen, max);
+		for (int i = 0; i < INPUT; ++i)
+			mC[i] = GetRandomWeight(dist, gen, max);
 		mReverseWeightsDirty = true;	
 	}
 
@@ -54,22 +57,31 @@ protected:
 	//Compile-time checks on the parameters
 	void ValidateTemplateParameters();
 
+	double GetRandomWeight(boost::random::uniform_int_distribution<>& dist, boost::mt11213b& gen, const int max )
+	{
+		double value = 12*((double)dist(gen)/max) - 6;
+		if (abs(value) < 0.001)//Don't create links with 0 strength
+			value = 0.1;	
+		return value;// /Input;
+	}
+
 	void InitializeOmp()
 	{
-		char buffer[10];
-		int bufferSize = sizeof(buffer);
-		errno_t res = _dupenv_s(&buffer, &bufferSize, "NUMBER_OF_PROCESSORS1");
-		if (res)
+		size_t bufferSize;
+		char* pBuffer = NULL;
+		errno_t res = _dupenv_s(&pBuffer, &bufferSize, "NUMBER_OF_PROCESSORS1");
+		if (res || !bufferSize || !pBuffer)
 		{
 			std::cout << std::endl << "Cannot determine the number of logical processors. Error: " << res;
 			return;
 		}
-		buffer[sizeof(buffer)/sizeof(buffer[0]) - 1] = 0;//Just in case
-		int numCPUs = atoi(buffer);
+		pBuffer[bufferSize - 1] = 0;//Just in case
+		int numCPUs = atoi(pBuffer);
 		if (numCPUs != LONG_MIN)
 		{
 			omp_set_num_threads(numCPUs);
 		}
+		free(pBuffer);
 	}
 };
 
@@ -79,9 +91,10 @@ template<int INPUT, int OUTPUT, class FloatingPoint>
 void Layer<INPUT, OUTPUT, FloatingPoint>::ValidateTemplateParameters()
 {
 	//Compile-time checks to ensure that the parameters meet the expectations
-	int x[!(Input % 8)];//Ensure division by 8
-	int y[!(Output % 8)];//Ensure division by 8
+	int x[!(INPUT % 8)];//Ensure division by 8
+	int y[!(OUTPUT % 8)];//Ensure division by 8
 }
-#pragma (pop)
+#pragma warning (pop)
 
 }//Fast nets
+

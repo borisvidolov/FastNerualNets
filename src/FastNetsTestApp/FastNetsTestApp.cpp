@@ -9,7 +9,7 @@ using namespace FasteNets;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	Layer<10, 10> l;
+	Layer<8, 8> l;
 	return 0;
 }
 
