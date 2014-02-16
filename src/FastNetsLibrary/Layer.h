@@ -1,14 +1,14 @@
 // Created by Boris Vidolov on 02/14/2014
 // Published under Apache 2.0 licence.
 #pragma once
-#include <Windows.h>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include <omp.h>
 #include <time.h>
 #include <sstream>
 
-namespace FasteNets
+void InitializeOmp();
+namespace FastNets
 {
 
 /* Represents a single layer in the network. Note that the class will
@@ -16,6 +16,7 @@ initialize the OMP threads to achieve maximum performance gain.*/
 template<unsigned INPUT, unsigned OUTPUT, class FloatingPoint = double>
 class Layer
 {
+protected:
 	_CRT_ALIGN(32) FloatingPoint mWeights[OUTPUT][INPUT];
 	_CRT_ALIGN(32) FloatingPoint mReverseWeights[INPUT][OUTPUT];//Cache for faster calculation
 	_CRT_ALIGN(32) FloatingPoint mB[OUTPUT];//Input Bias
@@ -25,6 +26,12 @@ class Layer
 private:
 	Layer(const Layer&){}//No copy
 
+/* Public constants */
+public:
+	const static unsigned Input		= INPUT;
+	const static unsigned Output	= OUTPUT;
+	typedef typename FloatingPoint FloatingPointType;
+/*Constructors and destructors. */
 public:
 
 	Layer(void)
@@ -97,10 +104,8 @@ public:
 		mReverseWeightsDirty = true;
 	}	
 
-	~Layer(void)
-	{
-	}
-
+/*Public methods */
+public:
 	void WriteToFile(const char* szFile)
 	{
 		FILE* fp = NULL;
@@ -142,6 +147,8 @@ public:
 		}
 		fclose(fp);
 	}
+
+/* Internal implementaiton */
 protected:
 	//Compile-time checks on the parameters
 	void ValidateTemplateParameters();
@@ -153,27 +160,7 @@ protected:
 			value = 0.1;	
 		return value;// /Input;
 	}
-
-	void InitializeOmp()
-	{
-		size_t bufferSize;
-		char* pBuffer = NULL;
-		errno_t res = _dupenv_s(&pBuffer, &bufferSize, "NUMBER_OF_PROCESSORS");
-		if (res || !bufferSize || !pBuffer)
-		{
-			std::cout << std::endl << "Cannot determine the number of logical processors. Error: " << res << std::endl;
-			return;
-		}
-		pBuffer[bufferSize - 1] = 0;//Just in case
-		int numCPUs = atoi(pBuffer);
-		if (numCPUs != LONG_MIN)
-		{
-			std::cout << std::endl << "Setting OMP to " << numCPUs << " threads." << std::endl;
-			omp_set_num_threads(numCPUs);
-		}
-		free(pBuffer);
-	}
-};
+};//Layer class
 
 #pragma warning (push)
 #pragma warning (disable:4101)
@@ -186,5 +173,5 @@ void Layer<INPUT, OUTPUT, FloatingPoint>::ValidateTemplateParameters()
 }
 #pragma warning (pop)
 
-}//Fast nets
+}//FastNets namespace
 

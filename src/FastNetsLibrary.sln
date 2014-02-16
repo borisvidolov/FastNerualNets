@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FastNetsLibrary", "FastNetsLibrary\FastNetsLibrary.vcxproj", "{892A54D7-5BE0-4C78-99C9-394F7C8CA632}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FastNetsTestApp", "FastNetsTestApp\FastNetsTestApp.vcxproj", "{DCAC0F10-A388-407B-B627-9ADBFB6DDFE7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{892A54D7-5BE0-4C78-99C9-394F7C8CA632} = {892A54D7-5BE0-4C78-99C9-394F7C8CA632}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
