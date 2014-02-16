@@ -81,6 +81,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="File.h" />
     <ClInclude Include="Layer.h" />
     <ClInclude Include="Net.h" />
     <ClInclude Include="stdafx.h" />

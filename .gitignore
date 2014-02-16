@@ -17,6 +17,7 @@
 *.opensdf
 ipch
 Debug
+Release
 
 # Compiled Dynamic libraries
 *.so

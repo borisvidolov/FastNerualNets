@@ -19,6 +19,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		cout << "Layer Constructor...";
 		Layer<8, 8> l1;
 		cout << "Succeeded" << endl;
+
 		try
 		{
 			cout << "Layer Constructor with missing file...";
@@ -30,17 +31,24 @@ int _tmain(int argc, _TCHAR* argv[])
 		{
 			cout << "Succeeded" << endl;
 		}
+
 		cout << "Layer Write and read from file...";
 		l1.WriteToFile("foo");
 		Layer<8, 8> l2("foo");
 		remove("foo");
 		cout << "Succeeded" << endl;
+
 		//Networks:
 		cout << "Network constructor...";
 		Net<8> dummy;
 		Net<16, Net<8, Net<8, Net<8>>>> n;
 		cout << "Succeeded." << endl;
+
 		cout << "Network writing and reading...";
+		n.WriteToFile("bar");
+		Net<16, Net<8, Net<8, Net<8>>>> n1("bar");
+		remove("bar");
+		cout << "Succeeded." << endl;
 	}
 	catch(string error)
 	{
