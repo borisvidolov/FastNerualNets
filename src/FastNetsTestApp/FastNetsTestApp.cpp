@@ -6,10 +6,29 @@
 #include "..\FastNetsLibrary\Layer.h"
 
 using namespace FasteNets;
+using namespace std;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	Layer<8, 8> l;
-	return 0;
+	//Tests major scenarios:
+	cout << "Constructor...";
+	Layer<8, 8> l1;
+	cout << "Succeeded" << endl;
+	try
+	{
+		cout << "Constructor with missing file...";
+		Layer<8, 8> l("missing file");
+		cout << "Failed";
+		return 1;
+	}
+	catch (std::string error)
+	{
+		cout << "Succeeded" << endl;
+	}
+	cout << "Write and read from file...";
+	l1.WriteToFile("foo");
+	Layer<8, 8> l2("foo");
+	remove("foo");
+	cout << "Succeeded" << endl;
 }
 

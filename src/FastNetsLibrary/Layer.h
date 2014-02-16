@@ -6,13 +6,14 @@
 #include <boost/random/uniform_int_distribution.hpp>
 #include <omp.h>
 #include <time.h>
+#include <sstream>
 
 namespace FasteNets
 {
 
 /* Represents a single layer in the network. Note that the class will
 initialize the OMP threads to achieve maximum performance gain.*/
-template<int INPUT, int OUTPUT, class FloatingPoint = double>
+template<unsigned INPUT, unsigned OUTPUT, class FloatingPoint = double>
 class Layer
 {
 	_CRT_ALIGN(32) FloatingPoint mWeights[OUTPUT][INPUT];
@@ -49,10 +50,98 @@ public:
 		mReverseWeightsDirty = true;	
 	}
 
+	//Reads from file:
+	Layer(const char* szFile)
+	{
+		ValidateTemplateParameters();
+		InitializeOmp();
+		FILE* fp = NULL;
+		errno_t err = fopen_s(&fp, szFile, "rb");
+		if (err || !fp)
+		{
+			std::stringstream stream;
+			stream << "Cannot open the file: " << szFile;
+			throw stream.str();
+		}
+		
+		try
+		{
+			__int32 input = 0;
+			__int32 output = 0;
+			int read = fread(&input, sizeof(input), 1, fp);
+			if (1 != read || INPUT != input)
+				throw std::string("Bad input size!");
+			read = fread(&output, sizeof(output), 1, fp);
+			if (1 !=  read || OUTPUT != output)
+				throw std::string("Bad output size!");
+			__int32 fpSize = 0;
+			read = fread(&fpSize, sizeof(__int32), 1, fp);
+			if (1 != read || sizeof(mWeights[0][0]) != fpSize)
+				throw std::string("Bad floating point type!");
+			read = fread(mWeights, sizeof(mWeights[0][0]), INPUT*OUTPUT, fp);
+			if (INPUT*OUTPUT != read)
+				throw std::string("Cannot read all of the weights!");
+			read = fread(mB, sizeof(mB[0]), OUTPUT, fp);
+			if (OUTPUT != read)
+				throw std::string("Cannot read all of the input biases!");
+			read = fread(mC, sizeof(mC[0]), INPUT, fp);
+			if (INPUT != read)
+				throw std::string("Cannot read all of the output biases!");
+		}
+		catch(...)
+		{
+			fclose(fp);
+			throw;
+		}
+		fclose(fp);
+		mReverseWeightsDirty = true;
+	}	
+
 	~Layer(void)
 	{
 	}
 
+	void WriteToFile(const char* szFile)
+	{
+		FILE* fp = NULL;
+		errno_t err = fopen_s(&fp, szFile, "wb");
+		if (err || !fp)
+		{
+			std::stringstream stream;
+			stream << "Cannot write to the file: " << szFile;
+			throw stream.str();
+		}
+		try
+		{
+			__int32 input = INPUT;
+			__int32 output = OUTPUT;
+			int write = fwrite(&input, sizeof(input), 1, fp);
+			if (1 != write)
+				throw std::string("Unable to write to the file");
+			write = fwrite(&output, sizeof(output), 1, fp);
+			if (1 != write)
+				throw std::string("Unable to write to the file");
+			__int32 fpSize = sizeof(mWeights[0][0]);
+			write = fwrite(&fpSize, sizeof(__int32), 1, fp);
+			if (1 != write)
+				throw std::string("Unable to write to the file");
+			write = fwrite(mWeights, sizeof(mWeights[0][0]), INPUT*OUTPUT, fp);
+			if (INPUT*OUTPUT != write)
+				throw std::string("Unable to write to the file");
+			write = fwrite(mB, sizeof(mB[0]), OUTPUT, fp);
+			if (OUTPUT != write)
+				throw std::string("Unable to write to the file");
+			write = fwrite(mC, sizeof(mC[0]), INPUT, fp);
+			if (INPUT != write)
+				throw std::string("Unable to write to the file");
+		}
+		catch(...)
+		{
+			fclose(fp);
+			throw;
+		}
+		fclose(fp);
+	}
 protected:
 	//Compile-time checks on the parameters
 	void ValidateTemplateParameters();
@@ -69,16 +158,17 @@ protected:
 	{
 		size_t bufferSize;
 		char* pBuffer = NULL;
-		errno_t res = _dupenv_s(&pBuffer, &bufferSize, "NUMBER_OF_PROCESSORS1");
+		errno_t res = _dupenv_s(&pBuffer, &bufferSize, "NUMBER_OF_PROCESSORS");
 		if (res || !bufferSize || !pBuffer)
 		{
-			std::cout << std::endl << "Cannot determine the number of logical processors. Error: " << res;
+			std::cout << std::endl << "Cannot determine the number of logical processors. Error: " << res << std::endl;
 			return;
 		}
 		pBuffer[bufferSize - 1] = 0;//Just in case
 		int numCPUs = atoi(pBuffer);
 		if (numCPUs != LONG_MIN)
 		{
+			std::cout << std::endl << "Setting OMP to " << numCPUs << " threads." << std::endl;
 			omp_set_num_threads(numCPUs);
 		}
 		free(pBuffer);
@@ -87,7 +177,7 @@ protected:
 
 #pragma warning (push)
 #pragma warning (disable:4101)
-template<int INPUT, int OUTPUT, class FloatingPoint>
+template<unsigned INPUT, unsigned OUTPUT, class FloatingPoint>
 void Layer<INPUT, OUTPUT, FloatingPoint>::ValidateTemplateParameters()
 {
 	//Compile-time checks to ensure that the parameters meet the expectations
