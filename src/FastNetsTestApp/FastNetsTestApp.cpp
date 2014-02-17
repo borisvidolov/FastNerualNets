@@ -43,17 +43,47 @@ int _tmain(int argc, _TCHAR* argv[])
 		//Networks:
 		cout << "Network constructor...";
 		Net<8> dummy;
-		Net<16, Net<8, Net<8, Net<8>>>> n;
+		const unsigned input = 16;
+		const unsigned output = 8;
+		Net<input, Net<8, Net<8, Net<output>>>> n;
 		cout << "Succeeded." << endl;
 
 		cout << "Network writing and reading...";
 		n.WriteToFile("bar");
-		Net<16, Net<8, Net<8, Net<8>>>> n1("bar");
+		Net<input, Net<8, Net<8, Net<output>>>> n1("bar");
 		remove("bar");
 		if (!n.IsSame(n1))
 			throw std::string("The networks are different.");
 
 		cout << "Succeeded." << endl;
+
+		cout << "Check single slow calculation...";
+		_CRT_ALIGN(32) double inputArray[input];
+		_CRT_ALIGN(32) double outputArray[output];
+		for (unsigned i = 0; i < input; ++i)
+		{
+			inputArray[i] = i*0.001;
+		}
+		n.ProcessInputSlow(inputArray, outputArray);
+		cout << "Succeeded." << endl;
+
+		cout << "Measure slow calculation...";
+		time_t start = time(NULL);
+		for (int i = 0; i < 1000000; ++i)
+		{
+			n.ProcessInputSlow(inputArray, outputArray);
+		}
+		time_t end = time(NULL);
+		cout << "Took: " << (end - start) << " seconds.";
+
+		cout << "Measure AVX calculation...";
+		start = time(NULL);
+		for (int i = 0; i < 1000000; ++i)
+		{
+			n.ProcessInputFast(inputArray, outputArray);
+		}
+		end = time(NULL);
+		cout << "Took: " << (end - start) << " seconds.";
 	}
 	catch(string error)
 	{

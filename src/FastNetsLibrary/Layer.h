@@ -8,9 +8,13 @@
 #include "File.h"
 #include "FloatingPoint.h"
 
-void InitializeOmp();
+//Uncheck this, if in doubt of the AVX logic
+//#define CHECK_AVX_CALC
+
 namespace FastNets
 {
+
+void InitializeOmp();
 
 /* Represents a single layer in the network. Note that the class will
 initialize the OMP threads to achieve maximum performance gain.*/
@@ -18,6 +22,7 @@ template<unsigned INPUT, unsigned OUTPUT, class FloatingPoint = double>
 class Layer
 {
 protected:
+	//The CRT align is needed for the AVX optimizations
 	_CRT_ALIGN(32) FloatingPoint mWeights[OUTPUT][INPUT];
 	_CRT_ALIGN(32) FloatingPoint mReverseWeights[INPUT][OUTPUT];//Cache for faster calculation
 	_CRT_ALIGN(32) FloatingPoint mB[OUTPUT];//Input Bias
@@ -136,6 +141,55 @@ public:
 		if (!AreSame<FloatingPoint>((FloatingPoint*)mC, (FloatingPoint*)other.mC, INPUT))
 			return false;
 		return true;
+	}
+
+	void ProcessInputSlow(FloatingPoint* input, FloatingPoint* output)
+	{
+		FloatingPoint* pt = &mWeights[0][0];
+		for (unsigned i = 0; i < OUTPUT; ++i)
+		{
+			FloatingPoint accum = mB[i];
+			for (unsigned j = 0; j < INPUT; ++j)
+			{ 
+				accum += (*(pt++))*input[j];
+			}
+			output[i] = OutputFunction(accum);
+		}	
+	}
+
+	/*IMPORTANT: This one requires _CRT_ALIGN(32) pointers */
+	void ProcessInputFast(FloatingPoint* input, FloatingPoint* output)
+	{
+		for (int i = 0; i < OUTPUT; ++i)
+		{
+			double* pt = &mWeights[i][0];
+			unsigned size8 = INPUT/8;
+			register __m256d res = _mm256_set_pd(mB[i], 0, 0, 0);
+
+			for (unsigned j = 0; j < size8; ++j)
+			{
+				register __m256d m4d1 = _mm256_load_pd(&input[8*j]);
+				register __m256d m4d2 = _mm256_load_pd(&input[8*j + 4]);
+				register __m256d weights1 = _mm256_load_pd(pt);
+				register __m256d weights2 = _mm256_load_pd(&pt[4]);
+				m4d1 = _mm256_mul_pd(m4d1, weights1);
+				m4d2 = _mm256_mul_pd(m4d2, weights2);
+				res = _mm256_add_pd(res, m4d1);
+				res = _mm256_add_pd(res, m4d2);
+				pt += 8;
+			}
+			res = _mm256_hadd_pd(res, res);//{r0 + r1, r0 + r1, r2 + r3, r2 + r3}
+			register __m256d tmp = _mm256_permute2f128_pd(res, res, 1);//{r2 + r3, r2 + r3, r0 + r1, r0 + r1}
+			res = _mm256_add_pd(res, tmp);//{r0 + r1 + r2 + r3, ....}
+			output[i] = OutputFunction(res.m256d_f64[0]);
+		}
+	#ifdef CHECK_AVX_CALC			
+		{
+			double temp[Output];
+			CalculateSlow(fpInput, temp);
+			Compare(fpOutput, temp, Output); 
+		}
+	#endif
 	}
 
 /* Internal implementaiton */
