@@ -18,6 +18,7 @@
 ipch
 Debug
 Release
+packages
 
 # Compiled Dynamic libraries
 *.so
