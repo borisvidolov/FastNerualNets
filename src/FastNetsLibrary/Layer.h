@@ -8,25 +8,19 @@
 #include "File.h"
 #include "FloatingPoint.h"
 
-//Uncheck this, if in doubt of the AVX logic
-//#define CHECK_AVX_CALC
-
 namespace FastNets
 {
-
-void InitializeOmp();
 
 /* Represents a single layer in the network. Note that the class will
 initialize the OMP threads to achieve maximum performance gain.*/
 template<unsigned INPUT, unsigned OUTPUT, class FloatingPoint = double>
-class Layer
+class __declspec(align(32)) Layer
 {
 protected:
-	//The CRT align is needed for the AVX optimizations
-	_CRT_ALIGN(32) FloatingPoint mWeights[OUTPUT][INPUT];
-	_CRT_ALIGN(32) FloatingPoint mReverseWeights[INPUT][OUTPUT];//Cache for faster calculation
-	_CRT_ALIGN(32) FloatingPoint mB[OUTPUT];//Input Bias
-	_CRT_ALIGN(32) FloatingPoint mC[INPUT];//Output Bias
+	FloatingPoint* mWeights;
+	FloatingPoint* mReverseWeights;//Cache for faster calculation
+	FloatingPoint* mB;//Input Bias
+	FloatingPoint* mC;//Output Bias (for reverse calculation)
 
 	bool  mReverseWeightsDirty;
 private:
@@ -43,17 +37,22 @@ public:
 	Layer(void)
 	{
 		ValidateTemplateParameters();
-		InitializeOmp();
 
 		boost::mt11213b gen;
 		gen.seed((unsigned __int32)time(NULL));
 		const int max = 10000;
 		boost::random::uniform_int_distribution<> dist(1, max);
+
+		mWeights = (double*)_aligned_malloc(INPUT*OUTPUT*sizeof(double), 32);
+		mReverseWeights = (double*)_aligned_malloc(INPUT*OUTPUT*sizeof(double), 32);
+		mB = (double*)_aligned_malloc(OUTPUT*sizeof(double), 32);
+		mC = (double*)_aligned_malloc(INPUT*sizeof(double), 32);
+
 		for (int i = 0; i < OUTPUT; ++i)
 		{
 			for (int j = 0; j < INPUT; ++j)
 			{ 
-				mWeights[i][j] = GetRandomWeight(dist, gen, max);
+				mWeights[i*INPUT + j] = GetRandomWeight(dist, gen, max);
 			}
 		}
 		for (int i = 0; i < OUTPUT; ++i)
@@ -67,11 +66,23 @@ public:
 	Layer(const char* szFile)
 	{
 		ValidateTemplateParameters();
-		InitializeOmp();
+
+		mWeights = (double*)_aligned_malloc(INPUT*OUTPUT*sizeof(double), 32);
+		mReverseWeights = (double*)_aligned_malloc(INPUT*OUTPUT*sizeof(double), 32);
+		mB = (double*)_aligned_malloc(OUTPUT*sizeof(double), 32);
+		mC = (double*)_aligned_malloc(INPUT*sizeof(double), 32);
 
 		File f(szFile, "rb");
 		ReadFromFile(f);
 		mReverseWeightsDirty = true;
+	}
+
+	~Layer()
+	{
+		_aligned_free(mWeights);
+		_aligned_free(mReverseWeights);
+		_aligned_free(mB);
+		_aligned_free(mC);
 	}
 
 /*Public methods */
@@ -92,11 +103,11 @@ public:
 		write = fwrite(&output, sizeof(output), 1, fp);
 		if (1 != write)
 			throw std::string("Unable to write to the file");
-		__int32 fpSize = sizeof(mWeights[0][0]);
+		__int32 fpSize = sizeof(mWeights[0]);
 		write = fwrite(&fpSize, sizeof(__int32), 1, fp);
 		if (1 != write)
 			throw std::string("Unable to write to the file");
-		write = fwrite(mWeights, sizeof(mWeights[0][0]), INPUT*OUTPUT, fp);
+		write = fwrite(mWeights, sizeof(mWeights[0]), INPUT*OUTPUT, fp);
 		if (INPUT*OUTPUT != write)
 			throw std::string("Unable to write to the file");
 		write = fwrite(mB, sizeof(mB[0]), OUTPUT, fp);
@@ -119,9 +130,9 @@ public:
 			throw std::string("Bad output size!");
 		__int32 fpSize = 0;
 		read = fread(&fpSize, sizeof(__int32), 1, fp);
-		if (1 != read || sizeof(mWeights[0][0]) != fpSize)
+		if (1 != read || sizeof(mWeights[0]) != fpSize)
 			throw std::string("Bad floating point type!");
-		read = fread(mWeights, sizeof(mWeights[0][0]), INPUT*OUTPUT, fp);
+		read = fread(mWeights, sizeof(mWeights[0]), INPUT*OUTPUT, fp);
 		if (INPUT*OUTPUT != read)
 			throw std::string("Cannot read all of the weights!");
 		read = fread(mB, sizeof(mB[0]), OUTPUT, fp);
@@ -145,7 +156,7 @@ public:
 
 	void ProcessInputSlow(FloatingPoint* input, FloatingPoint* output)
 	{
-		FloatingPoint* pt = &mWeights[0][0];
+		FloatingPoint* pt = mWeights;
 		for (unsigned i = 0; i < OUTPUT; ++i)
 		{
 			FloatingPoint accum = mB[i];
@@ -162,7 +173,7 @@ public:
 	{
 		for (int i = 0; i < OUTPUT; ++i)
 		{
-			double* pt = &mWeights[i][0];
+			double* pt = &mWeights[i*INPUT];
 			unsigned size8 = INPUT/8;
 			register __m256d res = _mm256_set_pd(mB[i], 0, 0, 0);
 
@@ -183,13 +194,6 @@ public:
 			res = _mm256_add_pd(res, tmp);//{r0 + r1 + r2 + r3, ....}
 			output[i] = OutputFunction(res.m256d_f64[0]);
 		}
-	#ifdef CHECK_AVX_CALC			
-		{
-			double temp[Output];
-			CalculateSlow(fpInput, temp);
-			Compare(fpOutput, temp, Output); 
-		}
-	#endif
 	}
 
 /* Internal implementaiton */

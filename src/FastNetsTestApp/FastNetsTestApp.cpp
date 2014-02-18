@@ -13,6 +13,12 @@ using namespace std;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	const unsigned input = 160;
+	const unsigned output = 8;
+	const unsigned iterations = 100000;	
+	double* inputArray = (double*)_aligned_malloc((iterations*input)*sizeof(double), 32);
+	double* slowOutputArray = (double*)_aligned_malloc((iterations*output)*sizeof(double), 32);
+	double* fastOutputArray = (double*)_aligned_malloc((iterations*output)*sizeof(double), 32);
 	try
 	{
 		//Tests major scenarios:
@@ -44,11 +50,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		//Networks:
 		cout << "Network constructor...";
 		Net<8> dummy;
-		const unsigned input = 160;
-		const unsigned output = 8;
 		Net<input, Net<112, Net<112, Net<output>>>> n;
 		cout << "Succeeded." << endl;
-
+		
 		cout << "Network writing and reading...";
 		n.WriteToFile("bar");
 		Net<input, Net<112, Net<112, Net<output>>>> n1("bar");
@@ -58,37 +62,37 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		cout << "Succeeded." << endl;
 
-		cout << "Check single slow calculation...";
-		_CRT_ALIGN(32) double inputArray[input];
-		_CRT_ALIGN(32) double outputArray[output];
-		for (unsigned i = 0; i < input; ++i)
+		for (unsigned j = 0; j < iterations; ++j)
 		{
-			inputArray[i] = i*0.001;
+			for (unsigned i = 0; i < input; ++i)
+			{
+				inputArray[j*input + i] = i*0.001;
+			}
 		}
-		n.ProcessInputSlow(inputArray, outputArray);
-		cout << "Succeeded." << endl;
 
 		cout << "Measure slow calculation...";
 		{
 			Timer t;
-			for (int i = 0; i < 1000000; ++i)
-			{
-				n.ProcessInputSlow(inputArray, outputArray);
-			}
+			n.BatchProcessInputSlow((double*)inputArray, (double*)slowOutputArray, iterations);
 		}
 
 		{
 			Timer t;
-			cout << "Measure AVX calculation...";
-			for (int i = 0; i < 1000000; ++i)
-			{
-				n.ProcessInputFast(inputArray, outputArray);
-			}
+			cout << "Measure AVX and multi-threaded OMP calculation...";
+			n.BatchProcessInputFast((double*)inputArray, (double*)fastOutputArray, iterations);
 		}
+
+		cout << "Verifying correctness...";
+		if (!AreSame((double*)slowOutputArray, (double*)fastOutputArray, output))
+			throw std::string("Different results");
+		cout << "Succeeded." << endl;
 	}
 	catch(string error)
 	{
 		cout << endl << "Failed: " << error.c_str() << endl;
 	}
+	_aligned_free(inputArray);
+	_aligned_free(slowOutputArray);
+	_aligned_free(fastOutputArray);
 }
 
