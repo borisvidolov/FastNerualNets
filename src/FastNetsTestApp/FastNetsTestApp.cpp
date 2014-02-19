@@ -14,7 +14,7 @@ using namespace std;
 int _tmain(int argc, _TCHAR* argv[])
 {
 	const unsigned input = 167;
-	const unsigned output = 8;
+	const unsigned output = 9;
 	const unsigned iterations = 100000;	
 	unsigned inputSize = (iterations*AVXAlign(input));
 	double* inputArray = (double*)_aligned_malloc(inputSize*sizeof(double), 32);
@@ -30,13 +30,13 @@ int _tmain(int argc, _TCHAR* argv[])
 		//Tests major scenarios:
 		//Layers:
 		cout << "Layer Constructor...";
-		Layer<8, 8> l1;
+		Layer<9, 1> l1;
 		cout << "Succeeded" << endl;
 
 		try
 		{
 			cout << "Layer Constructor with missing file...";
-			Layer<8, 8> l("missing file");
+			Layer<9, 1> l("missing file");
 			cout << "Failed";
 			return 1;
 		}
@@ -47,7 +47,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		cout << "Layer Write and read from file...";
 		l1.WriteToFile("foo");
-		Layer<8, 8> l2("foo");
+		Layer<9, 1> l2("foo");
 		remove("foo");
 		if (!l1.IsSame(l2))
 			throw std::string("Unpersisted layer is different.");
@@ -72,7 +72,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		{
 			for (unsigned i = 0; i < input; ++i)
 			{
-				inputArray[j*alignedInput + i] = i*0.001;
+				inputArray[j*alignedInput + i] = i*0.0001;
 			}
 		}
 
@@ -89,7 +89,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 
 		cout << "Verifying correctness...";
-		if (!AreSame((double*)slowOutputArray, (double*)fastOutputArray, output))
+		if (!AreSame(slowOutputArray, fastOutputArray, output))
 			throw std::string("Different results");
 		cout << "Succeeded." << endl;
 	}

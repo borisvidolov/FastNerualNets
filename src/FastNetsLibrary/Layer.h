@@ -99,8 +99,8 @@ public:
 		write = fwrite(&fpSize, sizeof(__int32), 1, fp);
 		if (1 != write)
 			throw std::string("Unable to write to the file");
-		write = fwrite(mWeights, sizeof(mWeights[0]), INPUT*OUTPUT, fp);
-		if (INPUT*OUTPUT != write)
+		write = fwrite(mWeights, sizeof(mWeights[0]), ALIGNED_INPUT*OUTPUT, fp);
+		if (ALIGNED_INPUT*OUTPUT != write)
 			throw std::string("Unable to write to the file");
 		write = fwrite(mB, sizeof(mB[0]), OUTPUT, fp);
 		if (OUTPUT != write)
@@ -124,8 +124,8 @@ public:
 		read = fread(&fpSize, sizeof(__int32), 1, fp);
 		if (1 != read || sizeof(mWeights[0]) != fpSize)
 			throw std::string("Bad floating point type!");
-		read = fread(mWeights, sizeof(mWeights[0]), INPUT*OUTPUT, fp);
-		if (INPUT*OUTPUT != read)
+		read = fread(mWeights, sizeof(mWeights[0]), ALIGNED_INPUT*OUTPUT, fp);
+		if (ALIGNED_INPUT*OUTPUT != read)
 			throw std::string("Cannot read all of the weights!");
 		read = fread(mB, sizeof(mB[0]), OUTPUT, fp);
 		if (OUTPUT != read)
@@ -152,6 +152,7 @@ public:
 		for (unsigned i = 0; i < OUTPUT; ++i)
 		{
 			FloatingPoint accum = mB[i];
+			pt = mWeights + ALIGNED_INPUT*i;
 			for (unsigned j = 0; j < INPUT; ++j)
 			{ 
 				accum += (*(pt++))*input[j];
