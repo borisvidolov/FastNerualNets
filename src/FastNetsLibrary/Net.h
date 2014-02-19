@@ -70,9 +70,10 @@ public:
 	"count" specifies the number of rows. */
 	void BatchProcessInputSlow(FloatingPointType* input, FloatingPointType* output, unsigned count)
 	{
+		unsigned alignedInputSize = AVXAlign(INPUT);
 		for (unsigned i = 0; i < count; ++i)
 		{
-			ProcessInputSlow(input + INPUT*i, output + UpperNet::Output*i);
+			ProcessInputSlow(input + alignedInputSize*i, output + UpperNet::Output*i);
 		}
 	}
 
@@ -99,10 +100,11 @@ public:
 	"count" specifies the number of rows. */
 	void BatchProcessInputFast(FloatingPointType* input, FloatingPointType* output, unsigned count)
 	{
+		unsigned alignedInputSize = AVXAlign(INPUT);
 		#pragma omp parallel for
 		for (int i = 0; i < (int)count; ++i)
 		{
-			ProcessInputFast(input + INPUT*i, output + UpperNet::Output*i);
+			ProcessInputFast(input + alignedInputSize*i, output + UpperNet::Output*i);
 		}
 	}
 

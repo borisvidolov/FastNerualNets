@@ -7,13 +7,13 @@
 namespace FastNets
 {
 	/* Compares two floating point numbers. */
-	bool AreSame(double first, double second)
+	inline bool AreSame(double first, double second)
 	{
 		return (abs(first - second) < 0.000001);
 	}
 
 	/* Compares two floating point numbers. */
-	bool AreSame(float first, float second)
+	inline bool AreSame(float first, float second)
 	{
 		return (abs(first - second) < 0.001);
 	}
@@ -36,4 +36,13 @@ namespace FastNets
 		//Hyperbolic tangent:
 		return 1 - (2.0 / (1.0 + exp(2*input)));
 	}
+
+	//Given an integer, returns the closest >= one that is 32 byte aligned.
+	inline unsigned AVXAlign(unsigned value)
+	{
+		return (value + 31) & ~31;
+	}
+
+	/* Calculates the output of a layer. */
+	void ProcessInputAVX(double* input, double* output, unsigned inputSize, unsigned outputSize, double* weights, double* bias);
 }

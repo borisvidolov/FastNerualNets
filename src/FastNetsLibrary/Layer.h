@@ -29,30 +29,27 @@ private:
 /* Public constants */
 public:
 	const static unsigned Input		= INPUT;
+	const static unsigned ALIGNED_INPUT = (INPUT + 31) & ~31;
 	const static unsigned Output	= OUTPUT;
+	const static unsigned ALIGNED_OUTPUT = (OUTPUT + 31) & ~31;
 	typedef typename FloatingPoint FloatingPointType;
 /*Constructors and destructors. */
 public:
 
 	Layer(void)
 	{
-		ValidateTemplateParameters();
-
 		boost::mt11213b gen;
 		gen.seed((unsigned __int32)time(NULL));
 		const int max = 10000;
 		boost::random::uniform_int_distribution<> dist(1, max);
 
-		mWeights = (double*)_aligned_malloc(INPUT*OUTPUT*sizeof(double), 32);
-		mReverseWeights = (double*)_aligned_malloc(INPUT*OUTPUT*sizeof(double), 32);
-		mB = (double*)_aligned_malloc(OUTPUT*sizeof(double), 32);
-		mC = (double*)_aligned_malloc(INPUT*sizeof(double), 32);
+		AllocateMemory();
 
 		for (int i = 0; i < OUTPUT; ++i)
 		{
 			for (int j = 0; j < INPUT; ++j)
 			{ 
-				mWeights[i*INPUT + j] = GetRandomWeight(dist, gen, max);
+				mWeights[i*ALIGNED_INPUT + j] = GetRandomWeight(dist, gen, max);
 			}
 		}
 		for (int i = 0; i < OUTPUT; ++i)
@@ -65,12 +62,7 @@ public:
 	//Reads from file:
 	Layer(const char* szFile)
 	{
-		ValidateTemplateParameters();
-
-		mWeights = (double*)_aligned_malloc(INPUT*OUTPUT*sizeof(double), 32);
-		mReverseWeights = (double*)_aligned_malloc(INPUT*OUTPUT*sizeof(double), 32);
-		mB = (double*)_aligned_malloc(OUTPUT*sizeof(double), 32);
-		mC = (double*)_aligned_malloc(INPUT*sizeof(double), 32);
+		AllocateMemory();
 
 		File f(szFile, "rb");
 		ReadFromFile(f);
@@ -171,29 +163,7 @@ public:
 	/*IMPORTANT: This one requires _CRT_ALIGN(32) pointers */
 	void ProcessInputFast(FloatingPoint* input, FloatingPoint* output)
 	{
-		for (int i = 0; i < OUTPUT; ++i)
-		{
-			double* pt = &mWeights[i*INPUT];
-			unsigned size8 = INPUT/8;
-			register __m256d res = _mm256_set_pd(mB[i], 0, 0, 0);
-
-			for (unsigned j = 0; j < size8; ++j)
-			{
-				register __m256d m4d1 = _mm256_load_pd(&input[8*j]);
-				register __m256d m4d2 = _mm256_load_pd(&input[8*j + 4]);
-				register __m256d weights1 = _mm256_load_pd(pt);
-				register __m256d weights2 = _mm256_load_pd(&pt[4]);
-				m4d1 = _mm256_mul_pd(m4d1, weights1);
-				m4d2 = _mm256_mul_pd(m4d2, weights2);
-				res = _mm256_add_pd(res, m4d1);
-				res = _mm256_add_pd(res, m4d2);
-				pt += 8;
-			}
-			res = _mm256_hadd_pd(res, res);//{r0 + r1, r0 + r1, r2 + r3, r2 + r3}
-			register __m256d tmp = _mm256_permute2f128_pd(res, res, 1);//{r2 + r3, r2 + r3, r0 + r1, r0 + r1}
-			res = _mm256_add_pd(res, tmp);//{r0 + r1 + r2 + r3, ....}
-			output[i] = OutputFunction(res.m256d_f64[0]);
-		}
+		ProcessInputAVX(input, output, INPUT, OUTPUT, mWeights, mB);
 	}
 
 /* Internal implementaiton */
@@ -208,18 +178,15 @@ protected:
 			value = 0.1;	
 		return value;// /Input;
 	}
-};//Layer class
 
-#pragma warning (push)
-#pragma warning (disable:4101)
-template<unsigned INPUT, unsigned OUTPUT, class FloatingPoint>
-void Layer<INPUT, OUTPUT, FloatingPoint>::ValidateTemplateParameters()
-{
-	//Compile-time checks to ensure that the parameters meet the expectations
-	int x[!(INPUT % 8)];//Ensure division by 8
-	int y[!(OUTPUT % 8)];//Ensure division by 8
-}
-#pragma warning (pop)
+	void AllocateMemory()
+	{
+		mWeights = (double*)_aligned_malloc(ALIGNED_INPUT*OUTPUT*sizeof(double), 32);
+		mReverseWeights = (double*)_aligned_malloc(INPUT*ALIGNED_OUTPUT*sizeof(double), 32);
+		mB = (double*)_aligned_malloc(OUTPUT*sizeof(double), 32);
+		mC = (double*)_aligned_malloc(INPUT*sizeof(double), 32);
+	}
+};//Layer class
 
 }//FastNets namespace
 

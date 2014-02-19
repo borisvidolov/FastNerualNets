@@ -13,10 +13,16 @@ using namespace std;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	const unsigned input = 160;
+	const unsigned input = 167;
 	const unsigned output = 8;
 	const unsigned iterations = 100000;	
-	double* inputArray = (double*)_aligned_malloc((iterations*input)*sizeof(double), 32);
+	unsigned inputSize = (iterations*AVXAlign(input));
+	double* inputArray = (double*)_aligned_malloc(inputSize*sizeof(double), 32);
+	for (unsigned i = 0; i < inputSize; ++i)
+	{
+		//Initial initialization to invalid number:
+		inputArray[i] = _Nan._Double;
+	}
 	double* slowOutputArray = (double*)_aligned_malloc((iterations*output)*sizeof(double), 32);
 	double* fastOutputArray = (double*)_aligned_malloc((iterations*output)*sizeof(double), 32);
 	try
@@ -61,12 +67,12 @@ int _tmain(int argc, _TCHAR* argv[])
 			throw std::string("The networks are different.");
 
 		cout << "Succeeded." << endl;
-
+		int alignedInput = AVXAlign(input);
 		for (unsigned j = 0; j < iterations; ++j)
 		{
 			for (unsigned i = 0; i < input; ++i)
 			{
-				inputArray[j*input + i] = i*0.001;
+				inputArray[j*alignedInput + i] = i*0.001;
 			}
 		}
 
