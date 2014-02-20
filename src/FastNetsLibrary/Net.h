@@ -125,7 +125,8 @@ public:
 			mInputLayer.ProcessInputFast(input, intermediate);
 			mNext.ProcessInputFast(intermediate, output);
 		}
-	}};//Net class
+	}
+};//Net class
 
 //Specialization for the ending, all implementation is empty
 template<unsigned INPUT>

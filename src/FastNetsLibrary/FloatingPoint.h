@@ -4,6 +4,8 @@
 #include <string>
 #include <sstream>
 
+#define TANH_OUTPUT
+
 namespace FastNets
 {
 	/* Compares two floating point numbers. */
@@ -29,6 +31,7 @@ namespace FastNets
 		return true;
 	}
 
+#ifdef TANH_OUTPUT
 	//TODO: Create ifdefs or other mechanisms to allow for different output functions:
 	template <class T>
 	inline static T OutputFunction(T input)
@@ -36,6 +39,17 @@ namespace FastNets
 		//Hyperbolic tangent:
 		return 1 - (2.0 / (1.0 + exp(2*input)));
 	}
+
+	/* calculates the derivative as a function of the regular output */
+	template <class T>
+	inline static T DerivativeFunction(T output)
+	{
+		return (1 - output)*(1 + output);
+	}
+
+#else
+	#error Only thah is implemented for now
+#endif
 
 	//Given an integer, returns the closest >= one that is 32 byte aligned.
 	inline unsigned AVXAlign(unsigned value)
