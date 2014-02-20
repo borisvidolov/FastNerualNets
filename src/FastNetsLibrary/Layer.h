@@ -181,6 +181,11 @@ public:
 		}	
 	}
 
+	static Layer* Merge(Layer* net1, Layer* net2)
+	{
+		throw std::string("Implement me");
+	}
+
 /* Internal implementaiton */
 protected:
 	//Compile-time checks on the parameters

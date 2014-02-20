@@ -126,6 +126,17 @@ public:
 			mNext.ProcessInputFast(intermediate, output);
 		}
 	}
+
+	void Mutate(double rate)
+	{
+		mInputLayer.Mutate(rate);
+		mNext.Mutate(rate);
+	}
+
+	static Net* Merge(Net* net1, Net* net2)
+	{
+		throw std::string("Implement me");
+	}
 };//Net class
 
 //Specialization for the ending, all implementation is empty
@@ -148,6 +159,7 @@ public:
 	bool IsSame(const Net& other) const { return true; }
 	void ProcessInputSlow(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
 	void ProcessInputFast(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
+	void Mutate(double rate){}
 };
 
 }//FastNets namespace
