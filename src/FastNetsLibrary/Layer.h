@@ -7,6 +7,7 @@
 #include <sstream>
 #include "File.h"
 #include "FloatingPoint.h"
+#include "Randomizer.h"
 
 namespace FastNets
 {
@@ -38,10 +39,7 @@ public:
 
 	Layer(void)
 	{
-		boost::mt11213b gen;
-		gen.seed((unsigned __int32)time(NULL));
-		const int max = 10000;
-		boost::random::uniform_int_distribution<> dist(1, max);
+		Randomizer<> r;
 
 		AllocateMemory();
 
@@ -49,13 +47,13 @@ public:
 		{
 			for (int j = 0; j < INPUT; ++j)
 			{ 
-				mWeights[i*ALIGNED_INPUT + j] = GetRandomWeight(dist, gen, max);
+				mWeights[i*ALIGNED_INPUT + j] = GetRandomWeight(r);
 			}
 		}
 		for (int i = 0; i < OUTPUT; ++i)
-			mB[i] = GetRandomWeight(dist, gen, max);
+			mB[i] = GetRandomWeight(r);
 		for (int i = 0; i < INPUT; ++i)
-			mC[i] = GetRandomWeight(dist, gen, max);
+			mC[i] = GetRandomWeight(r);
 		mReverseWeightsDirty = true;	
 	}
 
@@ -167,25 +165,57 @@ public:
 		ProcessInputAVX(input, output, INPUT, OUTPUT, mWeights, mB);
 	}
 
+	void Mutate(FloatingPoint rate)
+	{
+		Randomizer<> r;
+		FloatingPoint* pt = mWeights;
+		for (unsigned i = 0; i < OUTPUT; ++i)
+		{
+			MutateWeight(mB[i], rate, r);
+			pt = mWeights + ALIGNED_INPUT*i;
+			for (unsigned j = 0; j < INPUT; ++j)
+			{ 
+				MutateWeight(*pt);
+				++pt;
+			}
+		}	
+	}
+
 /* Internal implementaiton */
 protected:
 	//Compile-time checks on the parameters
 	void ValidateTemplateParameters();
 
-	double GetRandomWeight(boost::random::uniform_int_distribution<>& dist, boost::mt11213b& gen, const int max )
+	double GetRandomWeight(Randomizer<>& rand)
 	{
-		double value = 12*((double)dist(gen)/max) - 6;
-		if (abs(value) < 0.001)//Don't create links with 0 strength
-			value = 0.1;	
+		double value = rand.RangeNext(6);
+		if (value < 0.0001 && value > -0.0001)
+		{
+			value = _copysign(0.001, value);
+		}
 		return value;// /Input;
 	}
 
 	void AllocateMemory()
 	{
-		mWeights = (double*)_aligned_malloc(ALIGNED_INPUT*OUTPUT*sizeof(double), 32);
-		mReverseWeights = (double*)_aligned_malloc(INPUT*ALIGNED_OUTPUT*sizeof(double), 32);
-		mB = (double*)_aligned_malloc(OUTPUT*sizeof(double), 32);
-		mC = (double*)_aligned_malloc(INPUT*sizeof(double), 32);
+		mWeights = (FloatingPoint*)_aligned_malloc(ALIGNED_INPUT*OUTPUT*sizeof(FloatingPoint), 32);
+		mReverseWeights = (FloatingPoint*)_aligned_malloc(INPUT*ALIGNED_OUTPUT*sizeof(FloatingPoint), 32);
+		mB = (FloatingPoint*)_aligned_malloc(OUTPUT*sizeof(FloatingPoint), 32);
+		mC = (FloatingPoint*)_aligned_malloc(INPUT*sizeof(FloatingPoint), 32);
+	}
+
+	//Changes the "source" weight with the specified rate:
+	void MutateWeight(FloatingPoint& source, double rate, Randomizer<>& rand)
+	{
+        if (source < 0.00001 && source > -0.00001)
+        {
+            //Abillity to bring back really small numbers:
+			value = -_copysign(0.001, source);//Pass to the other side of the 0
+		}
+
+		double quotient = rand.OffsetNext;
+
+        source = source*quotient;
 	}
 };//Layer class
 
