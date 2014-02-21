@@ -92,6 +92,23 @@ int _tmain(int argc, _TCHAR* argv[])
 		if (!AreSame(slowOutputArray, fastOutputArray, output))
 			throw std::string("Different results");
 		cout << "Succeeded." << endl;
+
+		{
+			cout << "Verifying merging of two...";
+			Net<5, Net<6, Net<3>>> nFirst, nSecond;
+			nFirst.ProcessInputFast(inputArray, fastOutputArray);
+			Randomizer<> r;
+			Net<5, Net<6, Net<3>>> nSame(nFirst, nFirst, r);
+			nSame.ProcessInputFast(inputArray, slowOutputArray);
+			if (!AreSame(slowOutputArray, fastOutputArray, output))
+				throw std::string("Different results");	
+
+			Net<5, Net<6, Net<3>>> nDifferent(nFirst, nSecond, r);
+			nDifferent.ProcessInputFast(inputArray, slowOutputArray);
+			if (AreSame(slowOutputArray, fastOutputArray, output))
+				throw std::string("Should be different!");	
+			cout << "Succeeded." << endl;
+		}
 	}
 	catch(string error)
 	{

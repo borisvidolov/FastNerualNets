@@ -28,6 +28,9 @@ namespace FastNets
 
 		//Returns a random number:
 		int Next() { return mDist(mGen); }
+
+		//True or False:
+		bool NextBool() { return !!(Next() % 2); }
 		//Returns (0..1)
 		double BiasNext() { return ((double)Next())/mMax; }
 		//Returns (-absMax, absMax):

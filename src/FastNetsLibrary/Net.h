@@ -41,6 +41,12 @@ public:
 		ReadFromFile(f);
 	}
 
+	Net(const Net& first, const Net& second, Randomizer<>& rand)
+		:mInputLayer(first.mInputLayer, second.mInputLayer, rand),
+		mNext(first.mNext, second.mNext, rand)
+	{
+	}
+
 	void ReadFromFile(FILE* fp)
 	{
 		mInputLayer.ReadFromFile(fp);
@@ -129,13 +135,14 @@ public:
 
 	void Mutate(double rate)
 	{
-		mInputLayer.Mutate(rate);
-		mNext.Mutate(rate);
+		Randomizer<> rand();
+		Mutate(rate, rand);
 	}
 
-	static Net* Merge(Net* net1, Net* net2)
+	void Mutate(double rate, Randomizer<>& rand)
 	{
-		throw std::string("Implement me");
+		mInputLayer.Mutate(rate, rand);
+		mNext.Mutate(rate, rand);
 	}
 };//Net class
 
@@ -153,13 +160,14 @@ public:
 public:
 	Net(){}
 	Net(const char* szFile){}      
+	Net(const Net& first, const Net& second, Randomizer<>& rand){}
 	void WriteToFile(const char* szFile){}
 	void WriteToFile(FILE* fp){}
 	void ReadFromFile(FILE* fp){}
 	bool IsSame(const Net& other) const { return true; }
 	void ProcessInputSlow(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
 	void ProcessInputFast(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
-	void Mutate(double rate){}
+	void Mutate(double rate, Randomizer<>& rand){}
 };
 
 }//FastNets namespace

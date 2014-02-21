@@ -15,7 +15,7 @@ namespace FastNets
 /* Represents a single layer in the network. Note that the class will
 initialize the OMP threads to achieve maximum performance gain.*/
 template<unsigned INPUT, unsigned OUTPUT, class FloatingPoint = double>
-class __declspec(align(32)) Layer
+class Layer
 {
 protected:
 	FloatingPoint* mWeights;
@@ -55,6 +55,13 @@ public:
 		for (int i = 0; i < INPUT; ++i)
 			mC[i] = GetRandomWeight(r);
 		mReverseWeightsDirty = true;	
+	}
+
+	//Creates a layer by merging the two:
+	Layer(const Layer& merge1, const Layer& merge2, Randomizer<>& r)
+	{
+		AllocateMemory();
+		Merge(merge1, merge2, r);
 	}
 
 	//Reads from file:
@@ -165,9 +172,8 @@ public:
 		ProcessInputAVX(input, output, INPUT, OUTPUT, mWeights, mB);
 	}
 
-	void Mutate(FloatingPoint rate)
+	void Mutate(FloatingPoint rate, Randomizer<>& r)
 	{
-		Randomizer<> r;
 		FloatingPoint* pt = mWeights;
 		for (unsigned i = 0; i < OUTPUT; ++i)
 		{
@@ -175,19 +181,15 @@ public:
 			pt = mWeights + ALIGNED_INPUT*i;
 			for (unsigned j = 0; j < INPUT; ++j)
 			{ 
-				MutateWeight(*pt);
+				MutateWeight(*pt, rate, r);
 				++pt;
 			}
 		}	
 	}
 
-	static Layer* Merge(Layer* net1, Layer* net2)
-	{
-		throw std::string("Implement me");
-	}
-
 /* Internal implementaiton */
 protected:
+
 	//Compile-time checks on the parameters
 	void ValidateTemplateParameters();
 
@@ -221,6 +223,26 @@ protected:
 		double quotient = rand.OffsetNext;
 
         source = source*quotient;
+	}
+
+	void Merge(const Layer& layer1, const Layer& layer2, Randomizer<>& rand)
+	{
+		FloatingPoint *pt, *pt1, *pt2;
+		for (unsigned i = 0; i < OUTPUT; ++i)
+		{
+			mB[i] = rand.NextBool() ? layer1.mB[i] : layer2.mB[i];
+			unsigned offset = ALIGNED_INPUT*i;
+			pt = mWeights + offset;
+			pt1 = layer1.mWeights + offset;
+			pt2 = layer2.mWeights + offset;
+			for (unsigned j = 0; j < INPUT; ++j)
+			{ 
+				*pt = rand.NextBool() ? *pt1 : *pt2;
+				++pt;
+				++pt1;
+				++pt2;
+			}
+		}	
 	}
 };//Layer class
 
