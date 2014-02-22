@@ -85,6 +85,7 @@
   <ItemGroup>
     <ClInclude Include="File.h" />
     <ClInclude Include="FloatingPoint.h" />
+    <ClInclude Include="Genetic.h" />
     <ClInclude Include="Layer.h" />
     <ClInclude Include="Net.h" />
     <ClInclude Include="Randomizer.h" />

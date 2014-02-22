@@ -83,6 +83,29 @@ public:
 		}
 	}
 
+	double CalculateError(FloatingPointType* output, FloatingPointType* expected, unsigned count)
+	{
+		std::cout << "Calculating errors: ";
+		Timer t;
+		//TODO consider optimizing this code, if it takes considerable time
+		double accum = 0;
+		for (unsigned i = 0; i < count; ++i)
+		{
+			double localSquares = 0;
+			unsigned baseIndex = i*Output;
+			for (unsigned j = 0; j < Output; ++j)
+			{
+				unsigned index = baseIndex + j;
+				double delta = expected[index] - output[index];
+				localSquares += delta*delta;
+			}
+			localSquares /= Output;
+			accum += localSquares;
+		}
+		accum /= count;
+		return accum;
+	}
+
 	/* Forward calculation of the network. The method uses the first INPUT elements
 	   of the "input" array, so the array will need to have at least as much elements.
 	   The same applies to the "output" array, where the last layer of the net will
@@ -107,6 +130,7 @@ public:
 	void BatchProcessInputFast(FloatingPointType* input, FloatingPointType* output, unsigned count)
 	{
 		unsigned alignedInputSize = AVXAlign(INPUT);
+		Timer t;
 		#pragma omp parallel for
 		for (int i = 0; i < (int)count; ++i)
 		{
@@ -165,8 +189,8 @@ public:
 	void WriteToFile(FILE* fp){}
 	void ReadFromFile(FILE* fp){}
 	bool IsSame(const Net& other) const { return true; }
-	void ProcessInputSlow(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
-	void ProcessInputFast(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
+	double ProcessInputSlow(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
+	double ProcessInputFast(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
 	void Mutate(double rate, Randomizer<>& rand){}
 };
 
