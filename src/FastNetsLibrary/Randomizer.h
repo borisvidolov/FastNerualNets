@@ -19,10 +19,12 @@ namespace FastNets
 	private:
 		Randomizer(const Randomizer&){}//No copy
 	public:
+		//Note the seed passed to the mGen. The regular "time" function is not
+		//good enough, as many of the calculations happen between less than 1 second
+		//intervals.
 		Randomizer(unsigned max = 10000)
-			:mMax(max), mDist(1, max)
+			:mMax(max), mDist(1, max), mGen((uint32_t)__rdtsc())
 		{
-			mGen.seed((unsigned __int32)time(NULL));
 		}
 		unsigned Max() const { return mMax; }
 

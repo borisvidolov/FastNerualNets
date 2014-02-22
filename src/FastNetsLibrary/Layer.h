@@ -47,13 +47,13 @@ public:
 		{
 			for (int j = 0; j < INPUT; ++j)
 			{ 
-				mWeights[i*ALIGNED_INPUT + j] = GetRandomWeight(r);
+				mWeights[i*ALIGNED_INPUT + j] = GetRandomWeight(r, OUTPUT + 1);
 			}
 		}
 		for (int i = 0; i < OUTPUT; ++i)
-			mB[i] = GetRandomWeight(r);
+			mB[i] = GetRandomWeight(r, OUTPUT + 1);
 		for (int i = 0; i < INPUT; ++i)
-			mC[i] = GetRandomWeight(r);
+			mC[i] = GetRandomWeight(r, INPUT + 1);
 		mReverseWeightsDirty = true;	
 	}
 
@@ -193,14 +193,15 @@ protected:
 	//Compile-time checks on the parameters
 	void ValidateTemplateParameters();
 
-	double GetRandomWeight(Randomizer<>& rand)
+	double GetRandomWeight(Randomizer<>& rand, double divider)
 	{
 		double value = rand.RangeNext(6);
 		if (value < 0.0001 && value > -0.0001)
 		{
 			value = _copysign(0.001, value);
 		}
-		return value;// /Input;
+		value /= divider;
+		return value;
 	}
 
 	void AllocateMemory()

@@ -15,7 +15,11 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	const unsigned input = 167;
 	const unsigned output = 9;
+#ifdef NDEBUG
 	const unsigned iterations = 100000;	
+#else
+	const unsigned iterations = 10000;	
+#endif
 	unsigned inputSize = (iterations*AVXAlign(input));
 	double* inputArray = (double*)_aligned_malloc(inputSize*sizeof(double), 32);
 	for (unsigned i = 0; i < inputSize; ++i)
@@ -94,18 +98,31 @@ int _tmain(int argc, _TCHAR* argv[])
 		cout << "Succeeded." << endl;
 
 		{
-			cout << "Verifying merging of two...";
+			cout << "Test randomizer...";
+			Randomizer<> r1, r2;
+			if (r1.Next() == r2.Next())
+				throw std::string("Should be different!");
+			if (r1.RangeNext(6) == r2.RangeNext(6))
+				throw std::string("Should be different!");
+			cout << "Succeeded." << endl;
+		}
+
+		{
+			cout << "Verifying merging of two nets...";
 			Net<5, Net<6, Net<3>>> nFirst, nSecond;
 			nFirst.ProcessInputFast(inputArray, fastOutputArray);
+			nSecond.ProcessInputFast(inputArray, slowOutputArray);
+			if (AreSame(slowOutputArray, fastOutputArray, nFirst.Output))
+				throw std::string("Should be different!");	
 			Randomizer<> r;
 			Net<5, Net<6, Net<3>>> nSame(nFirst, nFirst, r);
 			nSame.ProcessInputFast(inputArray, slowOutputArray);
-			if (!AreSame(slowOutputArray, fastOutputArray, output))
+			if (!AreSame(slowOutputArray, fastOutputArray, nSame.Output))
 				throw std::string("Different results");	
 
 			Net<5, Net<6, Net<3>>> nDifferent(nFirst, nSecond, r);
 			nDifferent.ProcessInputFast(inputArray, slowOutputArray);
-			if (AreSame(slowOutputArray, fastOutputArray, output))
+			if (AreSame(slowOutputArray, fastOutputArray, nDifferent.Output))
 				throw std::string("Should be different!");	
 			cout << "Succeeded." << endl;
 		}
