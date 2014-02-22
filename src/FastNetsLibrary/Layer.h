@@ -218,10 +218,10 @@ protected:
         if (source < 0.00001 && source > -0.00001)
         {
             //Abillity to bring back really small numbers:
-			value = -_copysign(0.001, source);//Pass to the other side of the 0
+			source = -_copysign(0.001, source);//Pass to the other side of the 0
 		}
 
-		double quotient = rand.OffsetNext;
+		double quotient = rand.OffsetNext(rate);
 
         source = source*quotient;
 	}

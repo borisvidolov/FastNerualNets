@@ -125,6 +125,13 @@ int _tmain(int argc, _TCHAR* argv[])
 			if (AreSame(slowOutputArray, fastOutputArray, nDifferent.Output))
 				throw std::string("Should be different!");	
 			cout << "Succeeded." << endl;
+
+			cout << "Verify mutation...";
+			nDifferent.Mutate(0.1);
+			nDifferent.ProcessInputFast(inputArray, fastOutputArray);
+			if (AreSame(slowOutputArray, fastOutputArray, nDifferent.Output))
+				throw std::string("Should be different!");	
+			cout << "Succeeded." << endl;
 		}
 	}
 	catch(string error)

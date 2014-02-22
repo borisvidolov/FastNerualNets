@@ -135,7 +135,7 @@ public:
 
 	void Mutate(double rate)
 	{
-		Randomizer<> rand();
+		Randomizer<> rand;
 		Mutate(rate, rand);
 	}
 
