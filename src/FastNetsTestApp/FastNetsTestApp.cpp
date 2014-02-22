@@ -87,9 +87,19 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 
 		{
-			Timer t;
 			cout << "Measure AVX and multi-threaded OMP calculation...";
+			Timer t;
 			n.BatchProcessInputFast((double*)inputArray, (double*)fastOutputArray, iterations);
+			cout << "Succeeded." << endl;
+		}
+
+		{
+			cout << "Verify errors...";
+			Timer t;
+			double error = n.CalculateError(slowOutputArray, fastOutputArray, iterations);
+			if (!AreSame(error, 0))
+				throw std::string("Wrong error calculation.");
+			cout << "Succeeded." << endl;
 		}
 
 		cout << "Verifying correctness...";

@@ -85,8 +85,6 @@ public:
 
 	double CalculateError(FloatingPointType* output, FloatingPointType* expected, unsigned count)
 	{
-		std::cout << "Calculating errors: ";
-		Timer t;
 		//TODO consider optimizing this code, if it takes considerable time
 		double accum = 0;
 		for (unsigned i = 0; i < count; ++i)
