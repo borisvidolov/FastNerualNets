@@ -85,7 +85,8 @@ public:
 
 	double CalculateError(FloatingPointType* output, FloatingPointType* expected, unsigned count)
 	{
-		//TODO consider optimizing this code, if it takes considerable time
+		//This code can be optimized with AVX, OMP, etc. However, at this point
+		//the code is only 0.6% of the execution time. It is worth optimizing only for very small networks
 		double accum = 0;
 		for (unsigned i = 0; i < count; ++i)
 		{
