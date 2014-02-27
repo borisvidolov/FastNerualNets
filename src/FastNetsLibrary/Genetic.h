@@ -36,13 +36,38 @@ namespace FastNets
 
 		void Populate()
 		{
-			if (!mPopulation.size())
+			int populationCount = mPopulation.size();
+			if (!populationCount)
 			{
 				GenerateInitial();
 				return;
 			}
 
+			//A simple algorithm to create a population, where the most
+			//successful parents have the most children. Success is measured by how
+			//small is the error (how much different it is from the maximum error):
+			double maxError = 1e100;
+			for (int i = 0; i < populationCount; ++i)
+			{
+				double error = mPopulation[i].mError; 
+				if (maxError < error)
+					maxError = error;
+			}
 
+			double totalError = 0;
+			for (int i = 0; i < populationCount; ++i)
+			{
+				totalError += mPopulation[i].mError;
+			}
+			totalError = populationCount*maxError - totalError;//Reverse it
+
+			double distributedError = (populationCount - 1)*totalError;
+			for (int i = 0; i < populationCount - 1; ++i)
+			{
+				for (int j = i + 1; j < populationCount; ++j)
+				{
+				}
+			}
 			throw std::string("Implement me");
 		}
 
