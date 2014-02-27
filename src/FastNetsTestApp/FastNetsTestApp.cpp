@@ -7,6 +7,7 @@
 #include <iostream>
 #include "..\FastNetsLibrary\Net.h"
 #include "..\FastNetsLibrary\Timer.h"
+#include "..\FastNetsLibrary\Genetic.h"
 
 using namespace FastNets;
 using namespace std;
@@ -141,6 +142,15 @@ int _tmain(int argc, _TCHAR* argv[])
 			nDifferent.ProcessInputFast(inputArray, fastOutputArray);
 			if (AreSame(slowOutputArray, fastOutputArray, nDifferent.Output))
 				throw std::string("Should be different!");	
+			cout << "Succeeded." << endl;
+		}
+
+		{
+			typedef Net<2, Net<2, Net<1>>> NetType;
+			cout << "Test genetic algos...";
+			Population<NetType> population(10000, 0.01);
+			population.Populate();
+
 			cout << "Succeeded." << endl;
 		}
 	}

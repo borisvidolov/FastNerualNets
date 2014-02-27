@@ -2,6 +2,7 @@
 // Published under Apache 2.0 licence.
 #pragma once
 #include <vector>
+#include <algorithm>
 
 namespace FastNets
 {
@@ -21,6 +22,7 @@ namespace FastNets
 			IndividualStorage():mError(1e10), mpIndividual(NULL){}
 			FloatingPoint	mError;
 			Individual*		mpIndividual;
+			bool operator < (const IndividualStorage& other) const { return mError < other.mError; }
 		};
 		unsigned		mMaxCount;
 		double			mSurvivalRate;
@@ -36,35 +38,68 @@ namespace FastNets
 		{
 			if (!mPopulation.size())
 			{
-				//Initial flow, just generate them all:
-				mPopulation.reserve(mMaxCount);
-				//Add dummy elements:
-				for (unsigned i = 0; i < mMaxCount; ++i)
-				{
-					mPopulation.push_back(IndividualStorage());
-				}
-				#pragma omp parallel for
-				for (unsigned i = 0; i < mMaxCount; ++i)
-				{
-					mPopulation.
-				}
+				GenerateInitial();
+				return;
 			}
+
+
 			throw std::string("Implement me");
 		}
 
 		void Select()
 		{
-			throw std::string("Implement me");
+			std::stable_sort(mPopulation.begin(), mPopulation.end());
+			int maxRemaining = mMaxCount*mSurvivalRate;
+			mPopulation.erase(mPopulation.begin() + maxRemaining, mPopulation.end());
 		}
 
-		void Train(FloatingPoint* inputMatrix, FloatingPoint* outputMatrix, int numInputs)
+		void Train(FloatingPoint* inputMatrix, FloatingPoint* outputMatrix, FloatingPoint* expectedMatrix, int numInputs)
 		{
-			throw std::string("Implement me");
+			Populate();
+			Evaluate(inputMatrix, outputMatrix, numInputs);
+			Select();
+		}
+
+		void Evaluate(FloatingPoint* inputMatrix, FloatingPoint* outputMatrix, FloatingPoint* expectedMatrix, int numInputs)
+		{
+			#pragma omp parallel for
+			for (int i = 0; i < (int)mPopulation.size(); ++i)
+			{
+				//TODO: consider implementing a back calculator that does not use OMP. OMP is the most efficient
+				//when it is applied at the top.
+				mPopulation[i].mpIndividual->BatchProcessInputFast(inputMatrix, outputMatrix, numInputs);
+				mPopulation[i].mError = mPopulation[i].mpIndividual->CalculateErrors(outputMatrix, expectedMatrix, numInputs);
+			}
 		}
 
 		~Population()
 		{
-			throw std::string("Implement me");
+			//Clear the memory:
+			for (unsigned i = 0; i < mPopulation.size(); ++i)
+			{
+				delete mPopulation[i].mpIndividual;
+			}
+		}
+	protected:
+
+		void GenerateInitial()
+		{
+			//Initial flow, just generate them all:
+			mPopulation.reserve(mMaxCount);
+			//Add dummy elements:
+			for (unsigned i = 0; i < mMaxCount; ++i)
+			{
+				mPopulation.push_back(IndividualStorage());
+			}
+
+			double defaultError = 1e10;
+			//Now set these elements in parallel:
+			#pragma omp parallel for
+			for (int i = 0; i < (int)mPopulation.size(); ++i)
+			{
+				mPopulation[i].mError = defaultError;
+				mPopulation[i].mpIndividual = new Individual();
+			}
 		}
 	};
 }
