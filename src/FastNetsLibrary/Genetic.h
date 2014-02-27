@@ -36,7 +36,7 @@ namespace FastNets
 
 		void Populate()
 		{
-			int populationCount = mPopulation.size();
+			unsigned populationCount = mPopulation.size();
 			if (!populationCount)
 			{
 				GenerateInitial();
@@ -47,7 +47,7 @@ namespace FastNets
 			//successful parents have the most children. Success is measured by how
 			//small is the error (how much different it is from the maximum error):
 			double maxError = 1e100;
-			for (int i = 0; i < populationCount; ++i)
+			for (unsigned i = 0; i < populationCount; ++i)
 			{
 				double error = mPopulation[i].mError; 
 				if (maxError < error)
@@ -55,17 +55,23 @@ namespace FastNets
 			}
 
 			double totalError = 0;
-			for (int i = 0; i < populationCount; ++i)
+			for (unsigned i = 0; i < populationCount; ++i)
 			{
 				totalError += mPopulation[i].mError;
 			}
-			totalError = populationCount*maxError - totalError;//Reverse it
+			double totalSuccess = populationCount*maxError - totalError;//Reverse it
 
 			double distributedError = (populationCount - 1)*totalError;
-			for (int i = 0; i < populationCount - 1; ++i)
+			for (unsigned int i = 0; i < populationCount - 1; ++i)
 			{
-				for (int j = i + 1; j < populationCount; ++j)
+				for (unsigned int j = i + 1; j < populationCount; ++j)
 				{
+					double combinedSuccess = 2*maxError - (mPopulation[i].mError + mPopulation[j].mError);
+					int numChildren = (int)(combinedSuccess/totalSuccess)*(mMaxCount - populationCount);
+					for (int k = 0; k < numChildren; ++k)
+					{
+						throw std::string("Implement me");
+					}
 				}
 			}
 			throw std::string("Implement me");
