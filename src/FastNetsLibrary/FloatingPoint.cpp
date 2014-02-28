@@ -9,13 +9,13 @@
 namespace FastNets
 {
 
-void ProcessInputAVX(double* input, double* output, unsigned inputSize, unsigned outputSize, double* weights, double* bias)
+void ProcessInputAVX(const double* input, double* output, unsigned inputSize, unsigned outputSize, const double* weights, const double* bias)
 {
 	unsigned alignedInputSize = AVXAlign<double>(inputSize);
 	for (int i = 0; i < (int)outputSize; ++i)
 	{
-		double* pWeights = &weights[i*alignedInputSize];
-		double* pInput = input;
+		const double* pWeights = &weights[i*alignedInputSize];
+		const double* pInput = input;
 		unsigned size8 = inputSize/8;
 		register __m256d res = _mm256_set_pd(bias[i], 0, 0, 0);
 
@@ -46,11 +46,5 @@ void ProcessInputAVX(double* input, double* output, unsigned inputSize, unsigned
 		output[i] = OutputFunction(result);
 	}
 }
-
-void TransferAlignedInput(const double* pInput, unsigned inputFeatures, unsigned numInputs, double* avxAlignedOutput)
-{
-	throw std::string("Implement me");
-}
-
 
 }

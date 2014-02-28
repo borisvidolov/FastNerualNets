@@ -18,6 +18,7 @@ template<unsigned INPUT, unsigned OUTPUT, class FloatingPoint = double>
 class Layer
 {
 protected:
+	
 	FloatingPoint* mWeights;
 	FloatingPoint* mReverseWeights;//Cache for faster calculation
 	FloatingPoint* mB;//Input Bias

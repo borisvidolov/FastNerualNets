@@ -83,6 +83,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AlignedMatrix.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="FloatingPoint.h" />
     <ClInclude Include="Genetic.h" />

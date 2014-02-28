@@ -63,8 +63,17 @@ namespace FastNets
 		return AVXAlignType(numElements, sizeof(T));
 	}
 
-	void TransferAlignedInput(const double* pInput, unsigned inputFeatures, unsigned numInputs, double* avxAlignedOutput);
+	//Transferred a matrix, containing non-aligned inputs into aligned one
+	template <class FloatingPointType>
+	void TransferAlignedInput(const FloatingPointType* pInput, unsigned inputFeatures, unsigned numInputs, FloatingPointType* pAvxAlignedOutput)
+	{
+		const unsigned alignedRow = AVXAlign<FloatingPointType>(inputFeatures);
+		for (unsigned i = 0; i < numInputs; ++i)
+		{
+			memcpy(pAvxAlignedOutput + i*alignedRow, pInput + i*inputFeatures, inputFeatures*sizeof(FloatingPointType));
+		}
+	}
 
 	/* Calculates the output of a layer. */
-	void ProcessInputAVX(double* input, double* output, unsigned inputSize, unsigned outputSize, double* weights, double* bias);
+	void ProcessInputAVX(const double* input, double* output, unsigned inputSize, unsigned outputSize, const double* weights, const double* bias);
 }
