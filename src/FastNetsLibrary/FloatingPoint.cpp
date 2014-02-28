@@ -47,4 +47,10 @@ void ProcessInputAVX(double* input, double* output, unsigned inputSize, unsigned
 	}
 }
 
+void TransferAlignedInput(const double* pInput, unsigned inputFeatures, unsigned numInputs, double* avxAlignedOutput)
+{
+	throw std::string("Implement me");
+}
+
+
 }

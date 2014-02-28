@@ -149,6 +149,10 @@ int _tmain(int argc, _TCHAR* argv[])
 			typedef Net<2, Net<2, Net<1>>> NetType;
 			cout << "Test genetic algos...";
 			Population<NetType> population(10000, 0.01);
+			unsigned xorInputSize = 4*AVXAlign(2);
+			double* xorInputArray = (double*)_aligned_malloc(xorInputSize*sizeof(double), 32);
+			double* xorOutputArray = (double*)_aligned_malloc(4*sizeof(double), 32);
+
 			population.Populate();
 
 			cout << "Succeeded." << endl;

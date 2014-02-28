@@ -57,6 +57,8 @@ namespace FastNets
 		return (value + 31) & ~31;
 	}
 
+	void TransferAlignedInput(const double* pInput, unsigned inputFeatures, unsigned numInputs, double* avxAlignedOutput);
+
 	/* Calculates the output of a layer. */
 	void ProcessInputAVX(double* input, double* output, unsigned inputSize, unsigned outputSize, double* weights, double* bias);
 }

@@ -34,13 +34,14 @@ namespace FastNets
 			:mMaxCount(maxCount), mSurvivalRate(survivalRate)
 		{}
 
-		void Populate()
+		//Returns whether this is the initial population
+		bool Populate()
 		{
 			unsigned populationCount = mPopulation.size();
 			if (!populationCount)
 			{
 				GenerateInitial();
-				return;
+				return true;
 			}
 
 			//A simple algorithm to create a population, where the most
@@ -59,22 +60,30 @@ namespace FastNets
 			{
 				totalError += mPopulation[i].mError;
 			}
+			unsigned populationToAdd = mMaxCount - populationCount;
+			mPopulation.insert(mPopulation.end(), populationToAdd, IndividualStorage());
+
 			double totalSuccess = populationCount*maxError - totalError;//Reverse it
 
 			double distributedError = (populationCount - 1)*totalError;
+			unsigned currentPlace = populationCount;
+			Randomizer<> rand;
 			for (unsigned int i = 0; i < populationCount - 1; ++i)
 			{
 				for (unsigned int j = i + 1; j < populationCount; ++j)
 				{
-					double combinedSuccess = 2*maxError - (mPopulation[i].mError + mPopulation[j].mError);
-					int numChildren = (int)(combinedSuccess/totalSuccess)*(mMaxCount - populationCount);
+					const IndividualStorage& first = mPopulation[i];
+					const IndividualStorage& second = mPopulation[j];
+					double combinedSuccess = 2*maxError - (first.mError + second.mError);
+					int numChildren = (int)((combinedSuccess/totalSuccess)*populationToAdd);
 					for (int k = 0; k < numChildren; ++k)
 					{
-						throw std::string("Implement me");
+						mPopulation[populationCount++].mpIndividual = new Individual(*first.mpIndividual, *second.mpIndividual, rand);
 					}
 				}
 			}
-			throw std::string("Implement me");
+
+			return false;
 		}
 
 		void Select()
@@ -84,17 +93,20 @@ namespace FastNets
 			mPopulation.erase(mPopulation.begin() + maxRemaining, mPopulation.end());
 		}
 
-		void Train(FloatingPoint* inputMatrix, FloatingPoint* outputMatrix, FloatingPoint* expectedMatrix, int numInputs)
+		//Static input parameter means that the Train method will be called always with
+		//the same input
+		void Train(FloatingPoint* inputMatrix, FloatingPoint* outputMatrix, FloatingPoint* expectedMatrix, int numInputs, bool staticInput)
 		{
-			Populate();
-			Evaluate(inputMatrix, outputMatrix, numInputs);
+			bool initial = Populate();
+			//The first time we evaluate all elements. Beyond that we only evaluate the new ones, if the input is static:
+			Evaluate(inputMatrix, outputMatrix, numInputs, (initial || !staticInput) ? 0 : (int)(mMaxCount*mSurvivalRate));
 			Select();
 		}
 
-		void Evaluate(FloatingPoint* inputMatrix, FloatingPoint* outputMatrix, FloatingPoint* expectedMatrix, int numInputs)
+		void Evaluate(FloatingPoint* inputMatrix, FloatingPoint* outputMatrix, FloatingPoint* expectedMatrix, int numInputs, int skipElements = 0)
 		{
 			#pragma omp parallel for
-			for (int i = 0; i < (int)mPopulation.size(); ++i)
+			for (int i = skipElements; i < (int)mPopulation.size(); ++i)
 			{
 				//TODO: consider implementing a back calculator that does not use OMP. OMP is the most efficient
 				//when it is applied at the top.
@@ -115,13 +127,11 @@ namespace FastNets
 
 		void GenerateInitial()
 		{
+			mPopulation.clear();//Just in case
 			//Initial flow, just generate them all:
-			mPopulation.reserve(mMaxCount);
+
 			//Add dummy elements:
-			for (unsigned i = 0; i < mMaxCount; ++i)
-			{
-				mPopulation.push_back(IndividualStorage());
-			}
+			mPopulation.assign(mMaxCount, IndividualStorage());
 
 			double defaultError = 1e10;
 			//Now set these elements in parallel:
