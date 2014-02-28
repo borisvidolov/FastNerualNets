@@ -11,7 +11,7 @@ namespace FastNets
 
 void ProcessInputAVX(double* input, double* output, unsigned inputSize, unsigned outputSize, double* weights, double* bias)
 {
-	unsigned alignedInputSize = AVXAlign(inputSize);
+	unsigned alignedInputSize = AVXAlign<double>(inputSize);
 	for (int i = 0; i < (int)outputSize; ++i)
 	{
 		double* pWeights = &weights[i*alignedInputSize];

@@ -30,9 +30,9 @@ private:
 /* Public constants */
 public:
 	const static unsigned Input		= INPUT;
-	const static unsigned ALIGNED_INPUT = (INPUT + 31) & ~31;
+	const static unsigned ALIGNED_INPUT = AVXAlignType(INPUT, sizeof(FloatingPoint));//Aligns to 4 doubles
 	const static unsigned Output	= OUTPUT;
-	const static unsigned ALIGNED_OUTPUT = (OUTPUT + 31) & ~31;
+	const static unsigned ALIGNED_OUTPUT = AVXAlignType(OUTPUT, sizeof(FloatingPoint));//Aligns to 4 doubles
 	typedef typename FloatingPoint FloatingPointType;
 /*Constructors and destructors. */
 public:
@@ -42,7 +42,8 @@ public:
 		Randomizer<> r;
 
 		AllocateMemory();
-
+		int alignedInput = ALIGNED_INPUT;
+		int alignedOutput = ALIGNED_OUTPUT;
 		for (int i = 0; i < OUTPUT; ++i)
 		{
 			for (int j = 0; j < INPUT; ++j)

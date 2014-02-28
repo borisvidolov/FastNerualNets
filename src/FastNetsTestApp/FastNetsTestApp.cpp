@@ -21,7 +21,7 @@ int _tmain(int argc, _TCHAR* argv[])
 #else
 	const unsigned iterations = 10000;	
 #endif
-	unsigned inputSize = (iterations*AVXAlign(input));
+	unsigned inputSize = (iterations*AVXAlign<double>(input));
 	double* inputArray = (double*)_aligned_malloc(inputSize*sizeof(double), 32);
 	for (unsigned i = 0; i < inputSize; ++i)
 	{
@@ -72,7 +72,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			throw std::string("The networks are different.");
 
 		cout << "Succeeded." << endl;
-		int alignedInput = AVXAlign(input);
+		int alignedInput = AVXAlign<double>(input);
 		for (unsigned j = 0; j < iterations; ++j)
 		{
 			for (unsigned i = 0; i < input; ++i)
@@ -149,7 +149,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			typedef Net<2, Net<2, Net<1>>> NetType;
 			cout << "Test genetic algos...";
 			Population<NetType> population(10000, 0.01);
-			unsigned xorInputSize = 4*AVXAlign(2);
+			unsigned xorInputSize = 4*AVXAlign<double>(2);
 			double* xorInputArray = (double*)_aligned_malloc(xorInputSize*sizeof(double), 32);
 			double* xorOutputArray = (double*)_aligned_malloc(4*sizeof(double), 32);
 

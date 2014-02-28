@@ -51,10 +51,16 @@ namespace FastNets
 	#error Only thah is implemented for now
 #endif
 
-	//Given an integer, returns the closest >= one that is 32 byte aligned.
-	inline unsigned AVXAlign(unsigned value)
+//Given an integer, returns the closest >= one that is 32 byte aligned.
+#define AVXAlignBytes(X) ((X + 31) & ~31);
+//Given an integer number of elements (e.g. doubles) and their bytes size
+//returns the 32 byte aligned number. E.g. "AVXAlign(3, sizeof(double))" equates to 4.
+#define AVXAlignType(X, size) ((X + (32/size) - 1) & ~(32/size - 1));
+
+	template<class T>
+	unsigned AVXAlign(unsigned numElements)
 	{
-		return (value + 31) & ~31;
+		return AVXAlignType(numElements, sizeof(T));
 	}
 
 	void TransferAlignedInput(const double* pInput, unsigned inputFeatures, unsigned numInputs, double* avxAlignedOutput);
