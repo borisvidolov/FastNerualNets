@@ -21,15 +21,10 @@ int _tmain(int argc, _TCHAR* argv[])
 #else
 	const unsigned iterations = 10000;	
 #endif
-	unsigned inputSize = (iterations*AVXAlign<double>(input));
-	double* inputArray = (double*)_aligned_malloc(inputSize*sizeof(double), 32);
-	for (unsigned i = 0; i < inputSize; ++i)
-	{
-		//Initial initialization to invalid number:
-		inputArray[i] = _Nan._Double;
-	}
-	double* slowOutputArray = (double*)_aligned_malloc((iterations*output)*sizeof(double), 32);
-	double* fastOutputArray = (double*)_aligned_malloc((iterations*output)*sizeof(double), 32);
+	AlignedMatrix<input> inputMatrix(iterations);
+	AlignedMatrix<output> slowOutputMatrix(iterations);
+	AlignedMatrix<output> fastOutputMatrix(iterations);
+
 	try
 	{
 		//Tests major scenarios:
@@ -75,36 +70,37 @@ int _tmain(int argc, _TCHAR* argv[])
 		int alignedInput = AVXAlign<double>(input);
 		for (unsigned j = 0; j < iterations; ++j)
 		{
+			double* pInput = inputMatrix.GetRow(j);
 			for (unsigned i = 0; i < input; ++i)
 			{
-				inputArray[j*alignedInput + i] = i*0.0001;
+				pInput[i] = i*0.0001;
 			}
 		}
 
 		cout << "Measure slow calculation...";
 		{
 			Timer t;
-			n.BatchProcessInputSlow((double*)inputArray, (double*)slowOutputArray, iterations);
+			n.BatchProcessInputSlow(inputMatrix, slowOutputMatrix);
 		}
 
 		{
 			cout << "Measure AVX and multi-threaded OMP calculation...";
 			Timer t;
-			n.BatchProcessInputFast((double*)inputArray, (double*)fastOutputArray, iterations);
+			n.BatchProcessInputFast(inputMatrix, fastOutputMatrix);
 			cout << "Succeeded." << endl;
 		}
 
 		{
 			cout << "Verify errors...";
 			Timer t;
-			double error = n.CalculateError(slowOutputArray, fastOutputArray, iterations);
+			double error = n.CalculateError(slowOutputMatrix, fastOutputMatrix);
 			if (!AreSame(error, 0))
 				throw std::string("Wrong error calculation.");
 			cout << "Succeeded." << endl;
 		}
 
 		cout << "Verifying correctness...";
-		if (!AreSame(slowOutputArray, fastOutputArray, output))
+		if (!slowOutputMatrix.IsSame(fastOutputMatrix))
 			throw std::string("Different results");
 		cout << "Succeeded." << endl;
 
@@ -121,26 +117,26 @@ int _tmain(int argc, _TCHAR* argv[])
 		{
 			cout << "Verifying merging of two nets...";
 			Net<5, Net<6, Net<3>>> nFirst, nSecond;
-			nFirst.ProcessInputFast(inputArray, fastOutputArray);
-			nSecond.ProcessInputFast(inputArray, slowOutputArray);
-			if (AreSame(slowOutputArray, fastOutputArray, nFirst.Output))
+			nFirst.ProcessInputFast(inputMatrix.GetRow(0), fastOutputMatrix.GetRow(0));
+			nSecond.ProcessInputFast(inputMatrix.GetRow(0), slowOutputMatrix.GetRow(0));
+			if (AreSame(slowOutputMatrix.GetRow(0), fastOutputMatrix.GetRow(0), nFirst.Output))
 				throw std::string("Should be different!");	
 			Randomizer<> r;
 			Net<5, Net<6, Net<3>>> nSame(nFirst, nFirst, r);
-			nSame.ProcessInputFast(inputArray, slowOutputArray);
-			if (!AreSame(slowOutputArray, fastOutputArray, nSame.Output))
+			nSame.ProcessInputFast(inputMatrix.GetRow(0), slowOutputMatrix.GetRow(0));
+			if (!AreSame(slowOutputMatrix.GetRow(0), fastOutputMatrix.GetRow(0), nFirst.Output))
 				throw std::string("Different results");	
 
 			Net<5, Net<6, Net<3>>> nDifferent(nFirst, nSecond, r);
-			nDifferent.ProcessInputFast(inputArray, slowOutputArray);
-			if (AreSame(slowOutputArray, fastOutputArray, nDifferent.Output))
+			nDifferent.ProcessInputFast(inputMatrix.GetRow(0), slowOutputMatrix.GetRow(0));
+			if (AreSame(slowOutputMatrix.GetRow(0), fastOutputMatrix.GetRow(0), nFirst.Output))
 				throw std::string("Should be different!");	
 			cout << "Succeeded." << endl;
 
 			cout << "Verify mutation...";
 			nDifferent.Mutate(0.1);
-			nDifferent.ProcessInputFast(inputArray, fastOutputArray);
-			if (AreSame(slowOutputArray, fastOutputArray, nDifferent.Output))
+			nDifferent.ProcessInputFast(inputMatrix.GetRow(0), fastOutputMatrix.GetRow(0));
+			if (AreSame(slowOutputMatrix.GetRow(0), fastOutputMatrix.GetRow(0), nFirst.Output))
 				throw std::string("Should be different!");	
 			cout << "Succeeded." << endl;
 		}
@@ -149,11 +145,15 @@ int _tmain(int argc, _TCHAR* argv[])
 			typedef Net<2, Net<2, Net<1>>> NetType;
 			cout << "Test genetic algos...";
 			Population<NetType> population(10000, 0.01);
-			unsigned xorInputSize = 4*AVXAlign<double>(2);
-			double* xorInputArray = (double*)_aligned_malloc(xorInputSize*sizeof(double), 32);
-			double* xorOutputArray = (double*)_aligned_malloc(4*sizeof(double), 32);
+			double xorInput[] =   {-1, -1,
+								-1, 1,
+								1, -1,
+								1, 1};
+			double xorExpected[] = { -0.5, 0.5, 0.5, -0.5 };
+			AlignedMatrix<2> xorInputMatrix(xorInput, 4);
+			AlignedMatrix<1> xorExpectedMatrix(xorExpected, 4);
 
-			population.Populate();
+			population.Train(xorInputMatrix, xorExpected, true);
 
 			cout << "Succeeded." << endl;
 		}
@@ -162,8 +162,5 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		cout << endl << "Failed: " << error.c_str() << endl;
 	}
-	_aligned_free(inputArray);
-	_aligned_free(slowOutputArray);
-	_aligned_free(fastOutputArray);
 }
 

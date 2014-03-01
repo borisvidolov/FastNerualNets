@@ -8,6 +8,7 @@
 #include "File.h"
 #include "FloatingPoint.h"
 #include "Randomizer.h"
+#include "AlignedMatrix.h"
 
 namespace FastNets
 {
@@ -19,8 +20,8 @@ class Layer
 {
 protected:
 	
-	FloatingPoint* mWeights;
-	FloatingPoint* mReverseWeights;//Cache for faster calculation
+	AlignedMatrix<INPUT, FloatingPoint>  mWeights;
+	AlignedMatrix<OUTPUT, FloatingPoint> mReverseWeights;
 	FloatingPoint* mB;//Input Bias
 	FloatingPoint* mC;//Output Bias (for reverse calculation)
 
@@ -31,25 +32,23 @@ private:
 /* Public constants */
 public:
 	const static unsigned Input		= INPUT;
-	const static unsigned ALIGNED_INPUT = AVXAlignType(INPUT, sizeof(FloatingPoint));//Aligns to 4 doubles
 	const static unsigned Output	= OUTPUT;
-	const static unsigned ALIGNED_OUTPUT = AVXAlignType(OUTPUT, sizeof(FloatingPoint));//Aligns to 4 doubles
 	typedef typename FloatingPoint FloatingPointType;
 /*Constructors and destructors. */
 public:
 
 	Layer(void)
+		:mWeights(OUTPUT), mReverseWeights(INPUT)
 	{
 		Randomizer<> r;
 
 		AllocateMemory();
-		int alignedInput = ALIGNED_INPUT;
-		int alignedOutput = ALIGNED_OUTPUT;
 		for (int i = 0; i < OUTPUT; ++i)
 		{
+			FloatingPoint* pRow = mWeights.GetRow(i);
 			for (int j = 0; j < INPUT; ++j)
 			{ 
-				mWeights[i*ALIGNED_INPUT + j] = GetRandomWeight(r, OUTPUT + 1);
+				pRow[j] = GetRandomWeight(r, OUTPUT + 1);
 			}
 		}
 		for (int i = 0; i < OUTPUT; ++i)
@@ -61,6 +60,7 @@ public:
 
 	//Creates a layer by merging the two:
 	Layer(const Layer& merge1, const Layer& merge2, Randomizer<>& r)
+		:mWeights(OUTPUT), mReverseWeights(INPUT)
 	{
 		AllocateMemory();
 		Merge(merge1, merge2, r);
@@ -68,6 +68,7 @@ public:
 
 	//Reads from file:
 	Layer(const char* szFile)
+		:mWeights(OUTPUT), mReverseWeights(INPUT)
 	{
 		AllocateMemory();
 
@@ -78,8 +79,6 @@ public:
 
 	~Layer()
 	{
-		_aligned_free(mWeights);
-		_aligned_free(mReverseWeights);
 		_aligned_free(mB);
 		_aligned_free(mC);
 	}
@@ -92,60 +91,35 @@ public:
 		WriteToFile(f);
 	}
 
-	void WriteToFile(FILE* fp)
+	void WriteToFile(File& rFile)
 	{
-		__int32 input = INPUT;
-		__int32 output = OUTPUT;
-		int write = fwrite(&input, sizeof(input), 1, fp);
-		if (1 != write)
-			throw std::string("Unable to write to the file");
-		write = fwrite(&output, sizeof(output), 1, fp);
-		if (1 != write)
-			throw std::string("Unable to write to the file");
-		__int32 fpSize = sizeof(mWeights[0]);
-		write = fwrite(&fpSize, sizeof(__int32), 1, fp);
-		if (1 != write)
-			throw std::string("Unable to write to the file");
-		write = fwrite(mWeights, sizeof(mWeights[0]), ALIGNED_INPUT*OUTPUT, fp);
-		if (ALIGNED_INPUT*OUTPUT != write)
-			throw std::string("Unable to write to the file");
-		write = fwrite(mB, sizeof(mB[0]), OUTPUT, fp);
-		if (OUTPUT != write)
-			throw std::string("Unable to write to the file");
-		write = fwrite(mC, sizeof(mC[0]), INPUT, fp);
-		if (INPUT != write)
-			throw std::string("Unable to write to the file");	
+		rFile.WriteSize(INPUT);
+		rFile.WriteSize(OUTPUT);
+		rFile.WriteSize(sizeof(FloatingPointType));
+
+		mWeights.WriteToFile(rFile);
+		rFile.WriteMany(mB, OUTPUT);
+		rFile.WriteMany(mC, INPUT);
 	}
 
-	void ReadFromFile(FILE* fp)
+	void ReadFromFile(File& rFile)
 	{
-		__int32 input = 0;
-		__int32 output = 0;
-		int read = fread(&input, sizeof(input), 1, fp);
-		if (1 != read || INPUT != input)
-			throw std::string("Bad input size!");
-		read = fread(&output, sizeof(output), 1, fp);
-		if (1 !=  read || OUTPUT != output)
-			throw std::string("Bad output size!");
-		__int32 fpSize = 0;
-		read = fread(&fpSize, sizeof(__int32), 1, fp);
-		if (1 != read || sizeof(mWeights[0]) != fpSize)
-			throw std::string("Bad floating point type!");
-		read = fread(mWeights, sizeof(mWeights[0]), ALIGNED_INPUT*OUTPUT, fp);
-		if (ALIGNED_INPUT*OUTPUT != read)
-			throw std::string("Cannot read all of the weights!");
-		read = fread(mB, sizeof(mB[0]), OUTPUT, fp);
-		if (OUTPUT != read)
-			throw std::string("Cannot read all of the input biases!");
-		read = fread(mC, sizeof(mC[0]), INPUT, fp);
-		if (INPUT != read)
-			throw std::string("Cannot read all of the output biases!");
+		rFile.ReadAndVerifySize(INPUT, "Wrong input size");
+		rFile.ReadAndVerifySize(OUTPUT, "Wrong output size");
+		rFile.ReadAndVerifySize(sizeof(FloatingPointType), "Wrong floating point file");
+
+		mWeights.ReadFromFile(rFile);
+		rFile.ReadMany(mB, OUTPUT);
+		rFile.ReadMany(mC, INPUT);
 	}
 
 	bool IsSame(const Layer& other) const
 	{
-		if (!AreSame<FloatingPoint>((FloatingPoint*)mWeights, (FloatingPoint*)other.mWeights, INPUT*OUTPUT))
-			return false;
+		for (unsigned i = 0; i < OUTPUT; ++i)
+		{
+			if (!AreSame<FloatingPoint>(mWeights.GetRow(i), other.mWeights.GetRow(i), INPUT))
+				return false;
+		}
 		if (!AreSame<FloatingPoint>((FloatingPoint*)mB, (FloatingPoint*)other.mB, OUTPUT))
 			return false;
 		if (!AreSame<FloatingPoint>((FloatingPoint*)mC, (FloatingPoint*)other.mC, INPUT))
@@ -153,13 +127,12 @@ public:
 		return true;
 	}
 
-	void ProcessInputSlow(FloatingPoint* input, FloatingPoint* output)
+	void ProcessInputSlow(const FloatingPoint* input, FloatingPoint* output)
 	{
-		FloatingPoint* pt = mWeights;
 		for (unsigned i = 0; i < OUTPUT; ++i)
 		{
 			FloatingPoint accum = mB[i];
-			pt = mWeights + ALIGNED_INPUT*i;
+			FloatingPoint* pt = mWeights.GetRow(i);
 			for (unsigned j = 0; j < INPUT; ++j)
 			{ 
 				accum += (*(pt++))*input[j];
@@ -169,18 +142,17 @@ public:
 	}
 
 	/*IMPORTANT: This one requires _CRT_ALIGN(32) pointers */
-	void ProcessInputFast(FloatingPoint* input, FloatingPoint* output)
+	void ProcessInputFast(const FloatingPoint* input, FloatingPoint* output)
 	{
-		ProcessInputAVX(input, output, INPUT, OUTPUT, mWeights, mB);
+		ProcessInputAVX(input, output, INPUT, OUTPUT, mWeights.GetBuffer(), mB);
 	}
 
 	void Mutate(FloatingPoint rate, Randomizer<>& r)
 	{
-		FloatingPoint* pt = mWeights;
 		for (unsigned i = 0; i < OUTPUT; ++i)
 		{
 			MutateWeight(mB[i], rate, r);
-			pt = mWeights + ALIGNED_INPUT*i;
+			FloatingPoint* pt = mWeights.GetRow(i);
 			for (unsigned j = 0; j < INPUT; ++j)
 			{ 
 				MutateWeight(*pt, rate, r);
@@ -208,8 +180,6 @@ protected:
 
 	void AllocateMemory()
 	{
-		mWeights = (FloatingPoint*)_aligned_malloc(ALIGNED_INPUT*OUTPUT*sizeof(FloatingPoint), 32);
-		mReverseWeights = (FloatingPoint*)_aligned_malloc(INPUT*ALIGNED_OUTPUT*sizeof(FloatingPoint), 32);
 		mB = (FloatingPoint*)_aligned_malloc(OUTPUT*sizeof(FloatingPoint), 32);
 		mC = (FloatingPoint*)_aligned_malloc(INPUT*sizeof(FloatingPoint), 32);
 	}
@@ -230,14 +200,14 @@ protected:
 
 	void Merge(const Layer& layer1, const Layer& layer2, Randomizer<>& rand)
 	{
-		FloatingPoint *pt, *pt1, *pt2;
+		FloatingPoint *pt;
+		const FloatingPoint *pt1, *pt2;
 		for (unsigned i = 0; i < OUTPUT; ++i)
 		{
 			mB[i] = rand.NextBool() ? layer1.mB[i] : layer2.mB[i];
-			unsigned offset = ALIGNED_INPUT*i;
-			pt = mWeights + offset;
-			pt1 = layer1.mWeights + offset;
-			pt2 = layer2.mWeights + offset;
+			pt = mWeights.GetRow(i);
+			pt1 = layer1.mWeights.GetRow(i);
+			pt2 = layer2.mWeights.GetRow(i);
 			for (unsigned j = 0; j < INPUT; ++j)
 			{ 
 				*pt = rand.NextBool() ? *pt1 : *pt2;

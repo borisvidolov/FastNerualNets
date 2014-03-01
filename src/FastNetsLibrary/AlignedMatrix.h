@@ -3,6 +3,7 @@
 #pragma once
 #include <malloc.h>
 #include "FloatingPoint.h"
+#include "File.h"
 
 namespace FastNets
 {
@@ -12,32 +13,65 @@ namespace FastNets
 //"ALIGNMENT" is in bytes.
 //TODO: add the alignment as a parameter, if needed.
 template<unsigned ROWSIZE, class FloatingPointType = double>
-class AlignedMattrix
+class AlignedMatrix
 {
 public:
 	FloatingPointType* mpMatrix;
 	unsigned		   mNumRows;
-	unsigned AlignedRowSize = AVXAlignType(ROWSIZE, sizeof(FloatingPointType));
+	const static unsigned AlignedRowSize = AVXAlignType(ROWSIZE, sizeof(FloatingPointType));
 private:
-	AlignedMattrix(const AlignedMattrix&){}//No copy
+	AlignedMatrix(const AlignedMatrix&){}//No copy
 public:
 	//Allocates the storage:
-	AlignedMattrix(unsigned rowCount)
+	AlignedMatrix(unsigned rowCount)
 		:mNumRows(rowCount)
 	{
 		AllocateBuffer();
 	}
 
-	AlignedMattrix(FloatingPointType* pNonAlignedBuffer, unsigned rowCount)
+	AlignedMatrix(const FloatingPointType* pNonAlignedBuffer, unsigned rowCount)
 		:mNumRows(rowCount)
 	{
 		AllocateBuffer();
-		TransferAlignedInput(pNonAlignedBuffer, mpMatrix, mNumRows, mpMatrix);
+		TransferAlignedInput(pNonAlignedBuffer, ROWSIZE, mNumRows, mpMatrix);
 	}
 
-	~AlignedMattrix()
+	~AlignedMatrix()
 	{
 		FreeBuffer();
+	}
+
+	void WriteToFile(File& rFile)
+	{
+		rFile.WriteSize(mNumRows);
+		rFile.WriteSize(sizeof(FloatingPointType));
+		rFile.WriteSize(ROWSIZE);
+		for (unsigned i = 0; i < mNumRows; ++i)
+		{
+			rFile.WriteMany(GetRow(i), ROWSIZE);
+		}
+	}
+
+	//read the contents of already constructed matrix:
+	void ReadFromFile(File& rFile)
+	{
+		rFile.ReadAndVerifySize(mNumRows, "Wrong number of rows");
+		rFile.ReadAndVerifySize(sizeof(FloatingPointType), "Wrong floating point type");
+		rFile.ReadAndVerifySize(ROWSIZE, "Wrong row size");
+		for (unsigned i = 0; i < mNumRows; ++i)
+		{
+			rFile.ReadMany(GetRow(i), ROWSIZE);
+		}
+	}
+
+	bool IsSame(const AlignedMatrix& other) const
+	{
+		for (unsigned i = 0; i < mNumRows; ++i)
+		{
+			if (!AreSame(GetRow(i), other.GetRow(i), ROWSIZE))
+				return false;
+		}
+		return true;
 	}
 
 	unsigned GetRowByteIndex(unsigned row) const 
@@ -46,8 +80,8 @@ public:
 			throw std::string("Row out of range.");
 		return row*AlignedRowSize;
 	}
-	FloatingPointType* GetRow(unsigned row){ return mpMatrix[GetRowByteIndex(row)]; }
-	const FloatingPointType* GetRow(unsigned row) const { return mpMatrix[GetRowByteIndex(row)]; }
+	FloatingPointType* GetRow(unsigned row){ return mpMatrix + GetRowByteIndex(row); }
+	const FloatingPointType* GetRow(unsigned row) const { return mpMatrix + GetRowByteIndex(row); }
 
 	unsigned NumRows() const { return mNumRows; }
 	FloatingPointType* GetBuffer() { return mpMatrix; }
@@ -55,7 +89,7 @@ public:
 
 	void AllocateBuffer()
 	{
-		mpMatrix = (FloatingPointType*)_aligned_malloc(mNumRows*AlignedRowSize*sizeof(FloatingPointType));
+		mpMatrix = (FloatingPointType*)_aligned_malloc(mNumRows*AlignedRowSize*sizeof(FloatingPointType), 32);
 	}
 
 	void FreeBuffer()

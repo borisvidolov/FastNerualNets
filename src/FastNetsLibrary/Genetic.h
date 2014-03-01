@@ -86,32 +86,43 @@ namespace FastNets
 			return false;
 		}
 
-		void Select()
+		//Returns the error rate of the best element.
+		double Select()
 		{
 			std::stable_sort(mPopulation.begin(), mPopulation.end());
 			int maxRemaining = mMaxCount*mSurvivalRate;
 			mPopulation.erase(mPopulation.begin() + maxRemaining, mPopulation.end());
+			return mPopulation[0].mError;
 		}
 
 		//Static input parameter means that the Train method will be called always with
-		//the same input
-		void Train(FloatingPoint* inputMatrix, FloatingPoint* outputMatrix, FloatingPoint* expectedMatrix, int numInputs, bool staticInput)
+		//the same input. Returns the error of the best individual.
+		double Train(const AlignedMatrix<Individual::Input, FloatingPoint>& inputMatrix, 
+					 const AlignedMatrix<Individual::Output, FloatingPoint>& expectedMatrix, bool staticInput)
 		{
+			if (inputMatrix.NumRows() != expectedMatrix.NumRows())
+				throw std::string("Different number of rows in the input and expected output marices");
 			bool initial = Populate();
 			//The first time we evaluate all elements. Beyond that we only evaluate the new ones, if the input is static:
-			Evaluate(inputMatrix, outputMatrix, numInputs, (initial || !staticInput) ? 0 : (int)(mMaxCount*mSurvivalRate));
-			Select();
+			Evaluate(inputMatrix, expectedMatrix, (initial || !staticInput) ? 0 : (int)(mMaxCount*mSurvivalRate));
+			return Select();
 		}
 
-		void Evaluate(FloatingPoint* inputMatrix, FloatingPoint* outputMatrix, FloatingPoint* expectedMatrix, int numInputs, int skipElements = 0)
+		void Evaluate(const AlignedMatrix<Individual::Input, FloatingPoint>& inputMatrix, const AlignedMatrix<Individual::Output, FloatingPoint>& expectedMatrix, int skipElements = 0)
 		{
+			if (inputMatrix.NumRows() != expectedMatrix.NumRows())
+				throw std::string("Different number of rows in the input and expected output marices");
+
+			//TODO: consider removing OMP from here, as it is currently used inside the batch calculation.
 			#pragma omp parallel for
 			for (int i = skipElements; i < (int)mPopulation.size(); ++i)
 			{
+				//TODO: Matrix creation here is expensive. Consider removing it.
+				AlignedMatrix<Individual::Output, FloatingPoint> outputMatrix;
 				//TODO: consider implementing a back calculator that does not use OMP. OMP is the most efficient
 				//when it is applied at the top.
-				mPopulation[i].mpIndividual->BatchProcessInputFast(inputMatrix, outputMatrix, numInputs);
-				mPopulation[i].mError = mPopulation[i].mpIndividual->CalculateErrors(outputMatrix, expectedMatrix, numInputs);
+				mPopulation[i].mpIndividual->BatchProcessInputFast(inputMatrix, outputMatrix);
+				mPopulation[i].mError = mPopulation[i].mpIndividual->CalculateErrors(outputMatrix, expectedMatrix);
 			}
 		}
 

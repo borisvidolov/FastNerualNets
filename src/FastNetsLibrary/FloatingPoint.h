@@ -21,7 +21,7 @@ namespace FastNets
 	}
 
 	template<class T>
-	bool AreSame(T* data1, T* data2, unsigned count)
+	bool AreSame(const T* data1, const T* data2, unsigned count)
 	{
 		for (unsigned i = 0; i < count; ++i)
 		{
