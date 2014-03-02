@@ -8,6 +8,11 @@
 #pragma once
 
 #include "targetver.h"
+#ifndef NDEBUG
+	#define _CRTDBG_MAP_ALLOC
+	#include <stdlib.h>
+	#include <crtdbg.h>
+#endif
 
 #include <stdio.h>
 #include <tchar.h>

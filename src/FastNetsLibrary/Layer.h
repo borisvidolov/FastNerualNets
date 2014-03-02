@@ -37,25 +37,28 @@ public:
 /*Constructors and destructors. */
 public:
 
-	Layer(void)
+	Layer(bool initialize)
 		:mWeights(OUTPUT), mReverseWeights(INPUT)
 	{
 		Randomizer<> r;
 
 		AllocateMemory();
-		for (int i = 0; i < OUTPUT; ++i)
+		if (initialize)
 		{
-			FloatingPoint* pRow = mWeights.GetRow(i);
-			for (int j = 0; j < INPUT; ++j)
-			{ 
-				pRow[j] = GetRandomWeight(r, OUTPUT + 1);
+			for (int i = 0; i < OUTPUT; ++i)
+			{
+				FloatingPoint* pRow = mWeights.GetRow(i);
+				for (int j = 0; j < INPUT; ++j)
+				{ 
+					pRow[j] = GetRandomWeight(r, OUTPUT + 1);
+				}
 			}
+			for (int i = 0; i < OUTPUT; ++i)
+				mB[i] = GetRandomWeight(r, OUTPUT + 1);
+			for (int i = 0; i < INPUT; ++i)
+				mC[i] = GetRandomWeight(r, INPUT + 1);
+			mReverseWeightsDirty = true;	
 		}
-		for (int i = 0; i < OUTPUT; ++i)
-			mB[i] = GetRandomWeight(r, OUTPUT + 1);
-		for (int i = 0; i < INPUT; ++i)
-			mC[i] = GetRandomWeight(r, INPUT + 1);
-		mReverseWeightsDirty = true;	
 	}
 
 	//Creates a layer by merging the two:
@@ -66,16 +69,12 @@ public:
 		Merge(merge1, merge2, r);
 	}
 
-	//Reads from file:
-	Layer(const char* szFile)
-		:mWeights(OUTPUT), mReverseWeights(INPUT)
+	//Creates a random merge of the two parents. Used in genetic algorithms
+	void SetFromMergedParents(const Layer& merge1, const Layer& merge2, Randomizer<>& r)
 	{
-		AllocateMemory();
-
-		File f(szFile, "rb");
-		ReadFromFile(f);
-		mReverseWeightsDirty = true;
+		Merge(merge1, merge2, r);
 	}
+
 
 	~Layer()
 	{
@@ -102,6 +101,12 @@ public:
 		rFile.WriteMany(mC, INPUT);
 	}
 
+	void ReadFromFile(const char* szFile)
+	{
+		File f(szFile, "rb");
+		ReadFromFile(f);
+	}
+
 	void ReadFromFile(File& rFile)
 	{
 		rFile.ReadAndVerifySize(INPUT, "Wrong input size");
@@ -111,6 +116,7 @@ public:
 		mWeights.ReadFromFile(rFile);
 		rFile.ReadMany(mB, OUTPUT);
 		rFile.ReadMany(mC, INPUT);
+		mReverseWeightsDirty = true;
 	}
 
 	bool IsSame(const Layer& other) const

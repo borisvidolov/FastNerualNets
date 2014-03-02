@@ -33,9 +33,9 @@ private:
 
 /*Constructors and destructors */
 public:
-	Net(){}
+	Net():mInputLayer(true){}
 
-	Net(const char* szFile)
+	Net(const char* szFile):mInputLayer(false)
 	{
 		File f(szFile, "rb");
 		ReadFromFile(f);
@@ -45,6 +45,13 @@ public:
 		:mInputLayer(first.mInputLayer, second.mInputLayer, rand),
 		mNext(first.mNext, second.mNext, rand)
 	{
+	}
+
+	//Creates a random merge of the two parents. Used in genetic algorithms
+	void SetFromMergedParents(const Net& first, const Net& second, Randomizer<>& rand)
+	{
+		mInputLayer.SetFromMergedParents(first.mInputLayer, second.mInputLayer, rand);
+		mNext.SetFromMergedParents(first.mNext, second.mNext, rand);
 	}
 
 	void ReadFromFile(File& rFile)
@@ -191,9 +198,11 @@ public:
 	void WriteToFile(File& rFile){}
 	void ReadFromFile(File& rFile){}
 	bool IsSame(const Net& other) const { return true; }
-	double ProcessInputSlow(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
-	double ProcessInputFast(FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
+	double ProcessInputSlow(const FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
+	double ProcessInputFast(const FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
 	void Mutate(double rate, Randomizer<>& rand){}
+	//Creates a random merge of the two parents. Used in genetic algorithms
+	void SetFromMergedParents(const Net& first, const Net& second, Randomizer<>& rand){}
 };
 
 }//FastNets namespace

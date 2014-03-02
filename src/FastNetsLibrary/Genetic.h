@@ -6,13 +6,20 @@
 
 namespace FastNets
 {
-	/* Implements the genetic algorithm learning. Example usage:
+	/* Implements the genetic algorithm learning. This algorithm handles negative error values
+	and works well, even if the error function is not continuous. The algorithm can be used easily
+	to cases where we measure discrete success, buy just adding a "-" sign in front of the success
+	function. E.g. if you are training the robot to score soccer goals, the success function would
+	be the number of goals (nGoals). The error is -nGoals. Another example is trading of stocks where
+	the success may be the money made and the same principle can be applied.
+	Example usage:
 	Population<Net<2, Net<1>>> n;
 	do 
 	{
-		error = n.Train(xorDataInput, xorDataOutput, 4);
+		error = n.Train(xorDataInput, xorDataOutput, 0.1, true);
 	}
-	while (error > 0.3);*/
+	while (error > 0.01);
+	*/
 	template<class Individual, class FloatingPoint = double>
 	class Population
 	{
@@ -26,59 +33,83 @@ namespace FastNets
 		};
 		unsigned		mMaxCount;
 		double			mSurvivalRate;
-		std::vector<IndividualStorage> mPopulation;
+		IndividualStorage* mpPopulation;
+		bool		    mSelected;//Wheter a first selection has happened
 	private:
 		Population(const Population& other){}//No copy
 	public:
 		Population(unsigned maxCount, double survivalRate)
-			:mMaxCount(maxCount), mSurvivalRate(survivalRate)
-		{}
+			:mMaxCount(maxCount), mSurvivalRate(survivalRate), mSelected(false)
+		{
+			mpPopulation = new IndividualStorage[mMaxCount];
+			for (unsigned i = 0; i < mMaxCount; ++i)
+			{
+				mpPopulation[i].mpIndividual = new Individual();
+			}
+		}
+
+		~Population()
+		{
+			for (unsigned i = 0; i < mMaxCount; ++i)
+			{
+				delete mpPopulation[i].mpIndividual;
+			}
+			delete [] mpPopulation;
+		}
 
 		//Returns whether this is the initial population
-		bool Populate()
+		bool Populate(double mutationRate)
 		{
-			unsigned populationCount = mPopulation.size();
-			if (!populationCount)
+			if (!mSelected)
 			{
-				GenerateInitial();
 				return true;
 			}
 
 			//A simple algorithm to create a population, where the most
 			//successful parents have the most children. Success is measured by how
 			//small is the error (how much different it is from the maximum error):
-			double maxError = 1e100;
-			for (unsigned i = 0; i < populationCount; ++i)
+			unsigned selectionCount = SelectCount();
+			double maxError = -1e100;
+			for (unsigned i = 0; i < selectionCount; ++i)
 			{
-				double error = mPopulation[i].mError; 
+				double error = mpPopulation[i].mError; 
 				if (maxError < error)
 					maxError = error;
 			}
 
 			double totalError = 0;
-			for (unsigned i = 0; i < populationCount; ++i)
+			for (unsigned i = 0; i < selectionCount; ++i)
 			{
-				totalError += mPopulation[i].mError;
+				totalError += mpPopulation[i].mError;
 			}
-			unsigned populationToAdd = mMaxCount - populationCount;
-			mPopulation.insert(mPopulation.end(), populationToAdd, IndividualStorage());
+			unsigned populationToSet = mMaxCount - selectionCount;
 
-			double totalSuccess = populationCount*maxError - totalError;//Reverse it
+			double totalSuccess = selectionCount*maxError - totalError;//Reverse error into success
+			double totalPairsSuccess = (selectionCount - 1)*totalSuccess;
 
-			double distributedError = (populationCount - 1)*totalError;
-			unsigned currentPlace = populationCount;
+			unsigned currentPlace = selectionCount;
 			Randomizer<> rand;
-			for (unsigned int i = 0; i < populationCount - 1; ++i)
+			double reminder = 0;
+			for (unsigned int i = 0; i < selectionCount - 1; ++i)
 			{
-				for (unsigned int j = i + 1; j < populationCount; ++j)
+				for (unsigned int j = i + 1; j < selectionCount; ++j)
 				{
-					const IndividualStorage& first = mPopulation[i];
-					const IndividualStorage& second = mPopulation[j];
-					double combinedSuccess = 2*maxError - (first.mError + second.mError);
-					int numChildren = (int)((combinedSuccess/totalSuccess)*populationToAdd);
+					const IndividualStorage& first = mpPopulation[i];
+					const IndividualStorage& second = mpPopulation[j]; 
+					double combinedSuccess = 2*maxError - first.mError - second.mError;
+					double dNumChildren = ((combinedSuccess/totalPairsSuccess)*populationToSet);
+					int numChildren = (int)dNumChildren;
+					reminder += dNumChildren - numChildren;
+					if (reminder >= 1)
+					{
+						numChildren++;
+						reminder -= 1;
+					}
 					for (int k = 0; k < numChildren; ++k)
 					{
-						mPopulation[populationCount++].mpIndividual = new Individual(*first.mpIndividual, *second.mpIndividual, rand);
+						Individual& rToChange = *mpPopulation[currentPlace++].mpIndividual;
+						rToChange.SetFromMergedParents(*first.mpIndividual, *second.mpIndividual, rand);
+						rToChange.Mutate(mutationRate, rand);
 					}
 				}
 			}
@@ -86,25 +117,28 @@ namespace FastNets
 			return false;
 		}
 
-		//Returns the error rate of the best element.
+		unsigned SelectCount() const { return (unsigned)(mMaxCount*mSurvivalRate); }
+
+		//Returns the error rate of the best element. In the current implementation
+		//selects does not clear the memory (in order to avoid constant reallocations)
 		double Select()
 		{
-			std::stable_sort(mPopulation.begin(), mPopulation.end());
-			int maxRemaining = mMaxCount*mSurvivalRate;
-			mPopulation.erase(mPopulation.begin() + maxRemaining, mPopulation.end());
-			return mPopulation[0].mError;
+			mSelected = true;
+			std::stable_sort(mpPopulation, mpPopulation + mMaxCount);
+			return mpPopulation[0].mError;
 		}
 
 		//Static input parameter means that the Train method will be called always with
 		//the same input. Returns the error of the best individual.
 		double Train(const AlignedMatrix<Individual::Input, FloatingPoint>& inputMatrix, 
-					 const AlignedMatrix<Individual::Output, FloatingPoint>& expectedMatrix, bool staticInput)
+					 const AlignedMatrix<Individual::Output, FloatingPoint>& expectedMatrix, double mutationRate, bool staticInput)
 		{
 			if (inputMatrix.NumRows() != expectedMatrix.NumRows())
 				throw std::string("Different number of rows in the input and expected output marices");
-			bool initial = Populate();
+			bool initial = Populate(mutationRate);
 			//The first time we evaluate all elements. Beyond that we only evaluate the new ones, if the input is static:
-			Evaluate(inputMatrix, expectedMatrix, (initial || !staticInput) ? 0 : (int)(mMaxCount*mSurvivalRate));
+			int startElement = (initial || !staticInput) ? 0 : (int)(mMaxCount*mSurvivalRate);
+			Evaluate(inputMatrix, expectedMatrix, startElement);
 			return Select();
 		}
 
@@ -113,45 +147,17 @@ namespace FastNets
 			if (inputMatrix.NumRows() != expectedMatrix.NumRows())
 				throw std::string("Different number of rows in the input and expected output marices");
 
-			//TODO: consider removing OMP from here, as it is currently used inside the batch calculation.
 			#pragma omp parallel for
-			for (int i = skipElements; i < (int)mPopulation.size(); ++i)
+			for (int i = skipElements; i < (int)mMaxCount; ++i)
 			{
 				//TODO: Matrix creation here is expensive. Consider removing it.
-				AlignedMatrix<Individual::Output, FloatingPoint> outputMatrix;
-				//TODO: consider implementing a back calculator that does not use OMP. OMP is the most efficient
-				//when it is applied at the top.
-				mPopulation[i].mpIndividual->BatchProcessInputFast(inputMatrix, outputMatrix);
-				mPopulation[i].mError = mPopulation[i].mpIndividual->CalculateErrors(outputMatrix, expectedMatrix);
+				AlignedMatrix<Individual::Output, FloatingPoint> outputMatrix(inputMatrix.NumRows());
+				mpPopulation[i].mpIndividual->BatchProcessInputFast(inputMatrix, outputMatrix);
+				mpPopulation[i].mError = mpPopulation[i].mpIndividual->CalculateError(outputMatrix, expectedMatrix);
 			}
 		}
 
-		~Population()
-		{
-			//Clear the memory:
-			for (unsigned i = 0; i < mPopulation.size(); ++i)
-			{
-				delete mPopulation[i].mpIndividual;
-			}
-		}
 	protected:
 
-		void GenerateInitial()
-		{
-			mPopulation.clear();//Just in case
-			//Initial flow, just generate them all:
-
-			//Add dummy elements:
-			mPopulation.assign(mMaxCount, IndividualStorage());
-
-			double defaultError = 1e10;
-			//Now set these elements in parallel:
-			#pragma omp parallel for
-			for (int i = 0; i < (int)mPopulation.size(); ++i)
-			{
-				mPopulation[i].mError = defaultError;
-				mPopulation[i].mpIndividual = new Individual();
-			}
-		}
 	};
 }

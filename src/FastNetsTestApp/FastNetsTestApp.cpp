@@ -20,6 +20,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	const unsigned iterations = 100000;	
 #else
 	const unsigned iterations = 10000;	
+	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif
 	AlignedMatrix<input> inputMatrix(iterations);
 	AlignedMatrix<output> slowOutputMatrix(iterations);
@@ -30,13 +31,14 @@ int _tmain(int argc, _TCHAR* argv[])
 		//Tests major scenarios:
 		//Layers:
 		cout << "Layer Constructor...";
-		Layer<9, 1> l1;
+		Layer<9, 1> l1(true);
 		cout << "Succeeded" << endl;
 
 		try
 		{
 			cout << "Layer Constructor with missing file...";
-			Layer<9, 1> l("missing file");
+			Layer<9, 1> l(false);
+			l.ReadFromFile("missing file");
 			cout << "Failed";
 			return 1;
 		}
@@ -47,7 +49,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		cout << "Layer Write and read from file...";
 		l1.WriteToFile("foo");
-		Layer<9, 1> l2("foo");
+		Layer<9, 1> l2(false);
+		l2.ReadFromFile("foo");
 		remove("foo");
 		if (!l1.IsSame(l2))
 			throw std::string("Unpersisted layer is different.");
@@ -145,15 +148,26 @@ int _tmain(int argc, _TCHAR* argv[])
 			typedef Net<2, Net<2, Net<1>>> NetType;
 			cout << "Test genetic algos...";
 			Population<NetType> population(10000, 0.01);
-			double xorInput[] =   {-1, -1,
+			double xorInput[] ={-1, -1,
 								-1, 1,
-								1, -1,
-								1, 1};
+								 1, -1,
+								 1, 1};
 			double xorExpected[] = { -0.5, 0.5, 0.5, -0.5 };
 			AlignedMatrix<2> xorInputMatrix(xorInput, 4);
 			AlignedMatrix<1> xorExpectedMatrix(xorExpected, 4);
-
-			population.Train(xorInputMatrix, xorExpected, true);
+			cout << endl;
+			double previousError = 1e10;
+			{
+				Timer t;
+				for (int i = 0; i < 100; ++i)
+				{
+					double error = population.Train(xorInputMatrix, xorExpectedMatrix, 0.1, true);
+					cout << "Iteration: " << i << "; Error: " << error << endl;
+					if (error > previousError)
+						throw std::string("Not improving");
+					previousError = error;
+				}
+			}
 
 			cout << "Succeeded." << endl;
 		}
