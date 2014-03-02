@@ -164,6 +164,12 @@ namespace FastNets
 				mpPopulation[i].mpIndividual->BatchProcessInputFast(inputMatrix, *pOutputMtrx);
 				mpPopulation[i].mError = mpPopulation[i].mpIndividual->CalculateError(*pOutputMtrx, expectedMatrix);
 			}
+
+			for (int i = 0; i < maxTreads; ++i)
+			{
+				delete pMatrices[i];
+			}
+			delete [] pMatrices;
 		}
 
 	protected:

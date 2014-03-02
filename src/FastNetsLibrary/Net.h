@@ -81,7 +81,7 @@ public:
 
 	/* Processes a matrix, which rows are inputs to a matrix, which rows are the outputs. 
 	"count" specifies the number of rows. */
-	void BatchProcessInputSlow(const AlignedMatrix<INPUT, FloatingPointType>& input, AlignedMatrix<Output, FloatingPointType>& output)
+	void BatchProcessInputSlow(const AlignedMatrix<INPUT, FloatingPointType>& input, AlignedMatrix<Output, FloatingPointType>& output) const
 	{
 		if (input.NumRows() != output.NumRows())
 			throw std::string("Different number of rows between the input and the output");
@@ -91,7 +91,7 @@ public:
 		}
 	}
 
-	double CalculateError(const AlignedMatrix<Output, FloatingPointType>& output, const AlignedMatrix<Output, FloatingPointType>& expected)
+	double CalculateError(const AlignedMatrix<Output, FloatingPointType>& output, const AlignedMatrix<Output, FloatingPointType>& expected) const
 	{
 		//This code can be optimized with AVX, OMP, etc. However, at this point
 		//the code is only 0.6% of the execution time. It is worth optimizing only for very small networks
@@ -119,7 +119,7 @@ public:
 	   of the "input" array, so the array will need to have at least as much elements.
 	   The same applies to the "output" array, where the last layer of the net will
 	   put its data there.*/
-	void ProcessInputSlow(const FloatingPointType* input, FloatingPointType* output)
+	void ProcessInputSlow(const FloatingPointType* input, FloatingPointType* output) const
 	{
 		if (UpperNet::Last)//Should be constant expression
 		{
@@ -136,7 +136,7 @@ public:
 
 	/* Processes a matrix, which rows are inputs to a matrix, which rows are the outputs. 
 	"count" specifies the number of rows. */
-	void BatchProcessInputFast(const AlignedMatrix<INPUT, FloatingPointType>& input, AlignedMatrix<Output, FloatingPointType>& output)
+	void BatchProcessInputFast(const AlignedMatrix<INPUT, FloatingPointType>& input, AlignedMatrix<Output, FloatingPointType>& output) const
 	{
 		if (input.NumRows() != output.NumRows())
 			throw std::string("Different number of rows between the input and the output");
@@ -151,7 +151,7 @@ public:
 	   of the "input" array, so the array will need to have at least as much elements.
 	   The same applies to the "output" array, where the last layer of the net will
 	   put its data there.*/
-	void ProcessInputFast(const FloatingPointType* input, FloatingPointType* output)
+	void ProcessInputFast(const FloatingPointType* input, FloatingPointType* output) const
 	{
 		if (UpperNet::Last)//Should be constant expression
 		{
@@ -177,6 +177,7 @@ public:
 		mInputLayer.Mutate(rate, rand);
 		mNext.Mutate(rate, rand);
 	}
+
 };//Net class
 
 //Specialization for the ending, all implementation is empty
@@ -198,8 +199,8 @@ public:
 	void WriteToFile(File& rFile){}
 	void ReadFromFile(File& rFile){}
 	bool IsSame(const Net& other) const { return true; }
-	double ProcessInputSlow(const FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
-	double ProcessInputFast(const FloatingPointType* input, FloatingPointType* output){ throw std::string("Execution Flow error"); }
+	double ProcessInputSlow(const FloatingPointType* input, FloatingPointType* output) const { throw std::string("Execution Flow error"); }
+	double ProcessInputFast(const FloatingPointType* input, FloatingPointType* output) const { throw std::string("Execution Flow error"); }
 	void Mutate(double rate, Randomizer<>& rand){}
 	//Creates a random merge of the two parents. Used in genetic algorithms
 	void SetFromMergedParents(const Net& first, const Net& second, Randomizer<>& rand){}

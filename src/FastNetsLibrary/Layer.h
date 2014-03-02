@@ -133,12 +133,12 @@ public:
 		return true;
 	}
 
-	void ProcessInputSlow(const FloatingPoint* input, FloatingPoint* output)
+	void ProcessInputSlow(const FloatingPoint* input, FloatingPoint* output) const
 	{
 		for (unsigned i = 0; i < OUTPUT; ++i)
 		{
 			FloatingPoint accum = mB[i];
-			FloatingPoint* pt = mWeights.GetRow(i);
+			const FloatingPoint* pt = mWeights.GetRow(i);
 			for (unsigned j = 0; j < INPUT; ++j)
 			{ 
 				accum += (*(pt++))*input[j];
@@ -148,7 +148,7 @@ public:
 	}
 
 	/*IMPORTANT: This one requires _CRT_ALIGN(32) pointers */
-	void ProcessInputFast(const FloatingPoint* input, FloatingPoint* output)
+	void ProcessInputFast(const FloatingPoint* input, FloatingPoint* output) const
 	{
 		ProcessInputAVX(input, output, INPUT, OUTPUT, mWeights.GetBuffer(), mB);
 	}
