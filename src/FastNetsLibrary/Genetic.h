@@ -3,6 +3,8 @@
 #pragma once
 #include <vector>
 #include <algorithm>
+#include <map>
+#include <omp.h>
 
 namespace FastNets
 {
@@ -147,13 +149,20 @@ namespace FastNets
 			if (inputMatrix.NumRows() != expectedMatrix.NumRows())
 				throw std::string("Different number of rows in the input and expected output marices");
 
+			//Preinitialize the temporary matrices: one per OMP thread, to avoid large number of allocations:
+			int maxTreads = omp_get_max_threads();
+			AlignedMatrix<Individual::Output, FloatingPoint>** pMatrices = new AlignedMatrix<Individual::Output, FloatingPoint>*[maxTreads];
+			for (int i = 0; i < maxTreads; ++i)
+			{
+				pMatrices[i] = new AlignedMatrix<Individual::Output, FloatingPoint>(inputMatrix.NumRows());
+			}
 			#pragma omp parallel for
 			for (int i = skipElements; i < (int)mMaxCount; ++i)
 			{
-				//TODO: Matrix creation here is expensive. Consider removing it.
-				AlignedMatrix<Individual::Output, FloatingPoint> outputMatrix(inputMatrix.NumRows());
-				mpPopulation[i].mpIndividual->BatchProcessInputFast(inputMatrix, outputMatrix);
-				mpPopulation[i].mError = mpPopulation[i].mpIndividual->CalculateError(outputMatrix, expectedMatrix);
+				int threadNum = omp_get_thread_num();
+				AlignedMatrix<Individual::Output, FloatingPoint>* pOutputMtrx = pMatrices[omp_get_thread_num()];
+				mpPopulation[i].mpIndividual->BatchProcessInputFast(inputMatrix, *pOutputMtrx);
+				mpPopulation[i].mError = mpPopulation[i].mpIndividual->CalculateError(*pOutputMtrx, expectedMatrix);
 			}
 		}
 
