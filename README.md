@@ -8,5 +8,10 @@ Fast C++ implementation of deep neural networks. The project is under active dev
  Support for double precision floating point numbers only.<br/>
  AVX implementation for faster calculation of forward network propagation (some 2x faster calculation)<br/>
  OMP implementation for batch calculations (additionally NUM_CPU_CORES times faster)<br/>
- Training is not implemented yet<br/>
+ Training with genetic algorithms<br/>
+ <br/>
+ Next steps:<br/>
+ 1. Implement backprop<br/>
+ 2. Contrastive divergence<br/>
+ 3. OpenCL execution support<br/>
 
