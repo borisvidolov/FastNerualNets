@@ -15,7 +15,7 @@ namespace FastNets
 	be the number of goals (nGoals). The error is -nGoals. Another example is trading of stocks where
 	the success may be the money made and the same principle can be applied.
 	Example usage:
-	Population<Net<2, Net<1>>> n;
+	Population<Net<2, Net<2, Net<1>>>> n;
 	do 
 	{
 		error = n.Train(xorDataInput, xorDataOutput, 0.1, true);
