@@ -31,6 +31,9 @@ namespace FastNets
 		return true;
 	}
 
+	//Calculate the errors of a single output. TODO: Optimize with AVX
+	double CalculateOutputError(const double* actualOutput, const double* expectedOutput, unsigned outputNum);
+
 #ifdef TANH_OUTPUT
 	//TODO: Create ifdefs or other mechanisms to allow for different output functions:
 	template <class T>

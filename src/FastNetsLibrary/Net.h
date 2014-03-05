@@ -100,16 +100,7 @@ public:
 			throw std::string("Different number of rows between the input and the output");
 		for (unsigned i = 0; i < output.NumRows(); ++i)
 		{
-			double localSquares = 0;
-			const FloatingPointType* rowOutput = output.GetRow(i);
-			const FloatingPointType* rowExpected = expected.GetRow(i);
-			for (unsigned j = 0; j < Output; ++j)
-			{
-				double delta = rowOutput[j] - rowExpected[j];
-				localSquares += delta*delta;
-			}
-			localSquares /= Output;
-			accum += localSquares;
+			accum += CalculateOutputError(output.GetRow(i), expected.GetRow(i), Output);
 		}
 		accum /= output.NumRows();
 		return accum;

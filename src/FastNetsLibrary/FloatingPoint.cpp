@@ -47,4 +47,17 @@ void ProcessInputAVX(const double* input, double* output, unsigned inputSize, un
 	}
 }
 
+double CalculateOutputError(const double* actualOutput, const double* expectedOutput, unsigned outputNum)
+{
+	double squaresSum = 0;
+	for (unsigned j = 0; j < outputNum; ++j)
+	{
+		double delta = expectedOutput[j] - actualOutput[j];
+		squaresSum += delta*delta;
+	}
+	squaresSum /= outputNum;
+	return squaresSum;
+}
+
+
 }
