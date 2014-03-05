@@ -144,17 +144,17 @@ int _tmain(int argc, _TCHAR* argv[])
 			cout << "Succeeded." << endl;
 		}
 
+		typedef Net<2, Net<2, Net<1>>> XorNetType;
+		double xorInput[] ={-1, -1,
+							-1, 1,
+								1, -1,
+								1, 1};
+		double xorExpected[] = { -0.5, 0.5, 0.5, -0.5 };
+		AlignedMatrix<2> xorInputMatrix(xorInput, 4);
+		AlignedMatrix<1> xorExpectedMatrix(xorExpected, 4);
 		{
-			typedef Net<2, Net<2, Net<1>>> NetType;
 			cout << "Test genetic algos...";
-			Population<NetType> population(10000, 0.01);
-			double xorInput[] ={-1, -1,
-								-1, 1,
-								 1, -1,
-								 1, 1};
-			double xorExpected[] = { -0.5, 0.5, 0.5, -0.5 };
-			AlignedMatrix<2> xorInputMatrix(xorInput, 4);
-			AlignedMatrix<1> xorExpectedMatrix(xorExpected, 4);
+			Population<XorNetType> population(10000, 0.01);
 			cout << endl;
 			double previousError = 1e10;
 			{
@@ -162,6 +162,25 @@ int _tmain(int argc, _TCHAR* argv[])
 				for (int i = 0; i < 100; ++i)
 				{
 					double error = population.Train(xorInputMatrix, xorExpectedMatrix, 0.1, true);
+					cout << "Iteration: " << i << "; Error: " << error << endl;
+					if (error > previousError)
+						throw std::string("Not improving");
+					previousError = error;
+				}
+			}
+
+			cout << "Succeeded." << endl;
+		}
+		{
+			XorNetType net;
+			cout << "Test back propagataion...";
+			cout << endl;
+			double previousError = 1e10;
+			{
+				Timer t;
+				for (int i = 0; i < 10000; ++i)
+				{
+					double error = net.BackPropagation(xorInputMatrix, xorExpectedMatrix, 0.01);
 					cout << "Iteration: " << i << "; Error: " << error << endl;
 					if (error > previousError)
 						throw std::string("Not improving");

@@ -178,9 +178,32 @@ public:
 		mNext.Mutate(rate, rand);
 	}
 
+	double BackPropagation(const AlignedMatrix<INPUT, FloatingPointType>& output, const AlignedMatrix<Output, FloatingPointType>& expected, double learningRate) const
+	{
+		throw std::string("Implement me");
+	}
+
+private:
+	double BackPropagation(const FloatingPointType* input, FloatingPointType* output, const FloatingPointType* expected, 
+								 FloatingPointType* errors, double learningRate, bool firstLayer)
+	{
+		_CRT_ALIGN(32) FloatingPointType intermediate[UpperNet::Input];
+		_CRT_ALIGN(32) FloatingPointType localError[UpperNet::Input];
+		//Forward pass:
+		mInputLayer.ProcessInputFast(input, intermediate);
+		double outputError = mNext.BackPropagation(intermediate, output, expected, localError, learningRate, false);
+		//Backward pass:
+		//Calculate the errors for the lower level, unless there is no lower one:
+		if (!firstError)
+		{
+			mInputLayer.CalculateBackPropagationError(errors, localError);
+		}
+		mInputLayer.UpdateWeights(localError, learningRate);
+		return outputError;
+	}
 };//Net class
 
-//Specialization for the ending, all implementation is empty
+//Specialization for the ending, most implementation is empty
 template<unsigned INPUT>
 class Net<INPUT, double>
 {
@@ -204,6 +227,11 @@ public:
 	void Mutate(double rate, Randomizer<>& rand){}
 	//Creates a random merge of the two parents. Used in genetic algorithms
 	void SetFromMergedParents(const Net& first, const Net& second, Randomizer<>& rand){}
+	double BackPropagation(const FloatingPointType* input, FloatingPointType* output, const FloatingPointType* expected, 
+								 FloatingPointType* errors, double learningRate, bool firstLayer)
+	{
+		throw std::string("Impelement me");
+	}
 };
 
 }//FastNets namespace
