@@ -83,8 +83,8 @@ public:
 	"count" specifies the number of rows. */
 	void BatchProcessInputSlow(const AlignedMatrix<INPUT, FloatingPointType>& input, AlignedMatrix<Output, FloatingPointType>& output) const
 	{
-		if (input.NumRows() != output.NumRows())
-			throw std::string("Different number of rows between the input and the output");
+		EnsureSameSize(input, output);
+
 		for (unsigned i = 0; i < input.NumRows(); ++i)
 		{
 			ProcessInputSlow(input.GetRow(i), output.GetRow(i));
@@ -93,11 +93,10 @@ public:
 
 	double CalculateError(const AlignedMatrix<Output, FloatingPointType>& output, const AlignedMatrix<Output, FloatingPointType>& expected) const
 	{
+		EnsureSameSize(output, expected);
 		//This code can be optimized with AVX, OMP, etc. However, at this point
 		//the code is only 0.6% of the execution time. It is worth optimizing only for very small networks
 		double accum = 0;
-		if (output.NumRows() != expected.NumRows())
-			throw std::string("Different number of rows between the input and the output");
 		for (unsigned i = 0; i < output.NumRows(); ++i)
 		{
 			accum += CalculateOutputError(output.GetRow(i), expected.GetRow(i), Output);
@@ -129,8 +128,8 @@ public:
 	"count" specifies the number of rows. */
 	void BatchProcessInputFast(const AlignedMatrix<INPUT, FloatingPointType>& input, AlignedMatrix<Output, FloatingPointType>& output) const
 	{
-		if (input.NumRows() != output.NumRows())
-			throw std::string("Different number of rows between the input and the output");
+		EnsureSameSize(input, output);
+
 		#pragma omp parallel for
 		for (int i = 0; i < (int)input.NumRows(); ++i)
 		{
@@ -169,25 +168,41 @@ public:
 		mNext.Mutate(rate, rand);
 	}
 
-	double BackPropagation(const AlignedMatrix<INPUT, FloatingPointType>& output, const AlignedMatrix<Output, FloatingPointType>& expected, double learningRate) const
+	double BackPropagation(const AlignedMatrix<INPUT, FloatingPointType>& input, const AlignedMatrix<Output, FloatingPointType>& expected, double learningRate)
 	{
-		throw std::string("Implement me");
+		EnsureSameSize(input, expected);
+
+		double totalError = 0;
+		for (unsigned i = 0; i < input.NumRows(); ++i)
+		{
+			totalError += BackPropagation(input.GetRow(i), expected.GetRow(i), NULL, learningRate);
+		}
+
+		return totalError/input.NumRows();
 	}
 
 private:
-	double BackPropagation(const FloatingPointType* input, FloatingPointType* output, const FloatingPointType* expected, 
-								 FloatingPointType* errors, double learningRate, bool firstLayer)
+	template<unsigned first, unsigned second>
+	void EnsureSameSize(const AlignedMatrix<first, FloatingPointType>& input, const AlignedMatrix<second, FloatingPointType>& output) const
 	{
-		_CRT_ALIGN(32) FloatingPointType intermediate[UpperNet::Input];
-		_CRT_ALIGN(32) FloatingPointType localError[UpperNet::Input];
+		if (input.NumRows() != output.NumRows())
+			throw std::string("Different number of rows between the two matrices.");
+	}
+
+	double BackPropagation(const FloatingPointType* input, const FloatingPointType* expected, 
+								 FloatingPointType* errors, double learningRate)
+	{
+		_CRT_ALIGN(32) FloatingPointType nextOutput[UpperNet::Input];
+		_CRT_ALIGN(32) FloatingPointType nextError[UpperNet::Input];
 		//Forward pass:
-		mInputLayer.ProcessInputFast(input, intermediate);
-		double outputError = mNext.BackPropagation(intermediate, output, expected, localError, learningRate, false);
+		mInputLayer.ProcessInputFast(input, nextOutput);
+		double outputError = mNext.BackPropagation(nextOutput, expected, nextError, learningRate, false);
 		//Backward pass:
 		//Calculate the errors for the lower level, unless there is no lower one:
-		if (!firstError)
+		if (errors)
 		{
-			mInputLayer.CalculateBackPropagationError(errors, localError);
+			mInputLayer.CalculateBackPropagationError(input, nextError, 
+				errors, nextError);
 		}
 		mInputLayer.UpdateWeights(localError, learningRate);
 		return outputError;
@@ -218,10 +233,19 @@ public:
 	void Mutate(double rate, Randomizer<>& rand){}
 	//Creates a random merge of the two parents. Used in genetic algorithms
 	void SetFromMergedParents(const Net& first, const Net& second, Randomizer<>& rand){}
-	double BackPropagation(const FloatingPointType* input, FloatingPointType* output, const FloatingPointType* expected, 
+	double BackPropagation(const FloatingPointType* input, const FloatingPointType* expected, 
 								 FloatingPointType* errors, double learningRate, bool firstLayer)
 	{
-		throw std::string("Impelement me");
+		//The input for the last, dummy layer is the actual output of the net:
+		//TODO: use AVX here:
+		double error = 0;
+		for (int i = 0; i < (int)Output; ++i)
+		{
+			double localError = expected[i] - input[i];
+			errros[i] = localError;
+			error += localError*localError;
+		}
+		error /= Output;
 	}
 };
 

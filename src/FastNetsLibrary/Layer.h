@@ -167,9 +167,22 @@ public:
 		}	
 	}
 
+	void CalculateBackPropagationError(const FloatingPointType* lowerOutput, const FloatingPointType* upperError, FloatingPointType* lowerError) const
+	{
+		throw std::string("Implement me");
+	}
+
+
+
 /* Internal implementaiton */
 protected:
 
+	void UpdateReverseWeights()
+	{
+		if (!mReverseWeightsDirty)
+			return;
+		throw std::string("Implement me");
+	}
 	//Compile-time checks on the parameters
 	void ValidateTemplateParameters();
 

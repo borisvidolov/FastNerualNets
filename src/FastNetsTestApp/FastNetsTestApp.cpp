@@ -159,7 +159,12 @@ int _tmain(int argc, _TCHAR* argv[])
 			double previousError = 1e10;
 			{
 				Timer t;
-				for (int i = 0; i < 100; ++i)
+#ifdef NDEBUG
+				const unsigned generations = 100;
+#else
+				const unsigned generations = 1;
+#endif
+				for (unsigned i = 0; i < generations; ++i)
 				{
 					double error = population.Train(xorInputMatrix, xorExpectedMatrix, 0.1, true);
 					cout << "Iteration: " << i << "; Error: " << error << endl;
