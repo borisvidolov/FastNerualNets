@@ -167,9 +167,16 @@ public:
 		}	
 	}
 
-	void CalculateBackPropagationError(const FloatingPointType* lowerOutput, const FloatingPointType* upperError, FloatingPointType* lowerError) const
+	void CalculateBackPropagationError(const FloatingPointType* input, const FloatingPointType* outputError, FloatingPointType* inputError) const
+	{
+
+		throw std::string("Implement me");
+	}
+
+	void UpdateWeights(const FloatingPointType* input, const FloatingPointType* outputError, double learningRate)
 	{
 		throw std::string("Implement me");
+		mReverseWeightsDirty = true;
 	}
 
 
@@ -188,6 +195,8 @@ protected:
 
 	double GetRandomWeight(Randomizer<>& rand, double divider)
 	{
+		//TODO: Backpropagation works best if weights are set to values very close to 0.
+		//This is not the case for genetic algorithms. Consider passing an argument for these
 		double value = rand.RangeNext(6);
 		if (value < 0.0001 && value > -0.0001)
 		{

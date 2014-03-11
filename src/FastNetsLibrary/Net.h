@@ -181,14 +181,7 @@ public:
 		return totalError/input.NumRows();
 	}
 
-private:
-	template<unsigned first, unsigned second>
-	void EnsureSameSize(const AlignedMatrix<first, FloatingPointType>& input, const AlignedMatrix<second, FloatingPointType>& output) const
-	{
-		if (input.NumRows() != output.NumRows())
-			throw std::string("Different number of rows between the two matrices.");
-	}
-
+	//This method should be called only by the method above.
 	double BackPropagation(const FloatingPointType* input, const FloatingPointType* expected, 
 								 FloatingPointType* errors, double learningRate)
 	{
@@ -196,16 +189,24 @@ private:
 		_CRT_ALIGN(32) FloatingPointType nextError[UpperNet::Input];
 		//Forward pass:
 		mInputLayer.ProcessInputFast(input, nextOutput);
-		double outputError = mNext.BackPropagation(nextOutput, expected, nextError, learningRate, false);
+		//Continues the forward pass and comes back:
+		double outputError = mNext.BackPropagation(nextOutput, expected, nextError, learningRate);
 		//Backward pass:
 		//Calculate the errors for the lower level, unless there is no lower one:
 		if (errors)
 		{
-			mInputLayer.CalculateBackPropagationError(input, nextError, 
-				errors, nextError);
+			mInputLayer.CalculateBackPropagationError(input, nextError, errors);
 		}
-		mInputLayer.UpdateWeights(localError, learningRate);
+		mInputLayer.UpdateWeights(input, nextError, learningRate);
 		return outputError;
+	}
+
+protected:
+	template<unsigned first, unsigned second>
+	void EnsureSameSize(const AlignedMatrix<first, FloatingPointType>& input, const AlignedMatrix<second, FloatingPointType>& output) const
+	{
+		if (input.NumRows() != output.NumRows())
+			throw std::string("Different number of rows between the two matrices.");
 	}
 };//Net class
 
@@ -234,7 +235,7 @@ public:
 	//Creates a random merge of the two parents. Used in genetic algorithms
 	void SetFromMergedParents(const Net& first, const Net& second, Randomizer<>& rand){}
 	double BackPropagation(const FloatingPointType* input, const FloatingPointType* expected, 
-								 FloatingPointType* errors, double learningRate, bool firstLayer)
+								 FloatingPointType* errors, double learningRate)
 	{
 		//The input for the last, dummy layer is the actual output of the net:
 		//TODO: use AVX here:
@@ -242,10 +243,10 @@ public:
 		for (int i = 0; i < (int)Output; ++i)
 		{
 			double localError = expected[i] - input[i];
-			errros[i] = localError;
+			errors[i] = localError;
 			error += localError*localError;
 		}
-		error /= Output;
+		return error / Output;
 	}
 };
 
