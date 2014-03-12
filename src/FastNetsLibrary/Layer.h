@@ -173,7 +173,7 @@ public:
 		throw std::string("Implement me");
 	}
 
-	void UpdateWeights(const FloatingPointType* input, const FloatingPointType* outputError, double learningRate)
+	void UpdateWeightsAndBiases(const FloatingPointType* input, const FloatingPointType* outputError, double learningRate)
 	{
 		throw std::string("Implement me");
 		mReverseWeightsDirty = true;

@@ -197,7 +197,7 @@ public:
 		{
 			mInputLayer.CalculateBackPropagationError(input, nextError, errors);
 		}
-		mInputLayer.UpdateWeights(input, nextError, learningRate);
+		mInputLayer.UpdateWeightsAndBiases(input, nextError, learningRate);
 		return outputError;
 	}
 
