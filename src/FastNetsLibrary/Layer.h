@@ -13,6 +13,13 @@
 namespace FastNets
 {
 
+enum WeightsInitialize
+{
+	NoWeightsInitialize,
+	InitializeForGenetic,
+	InitializeForBackProp,
+};
+
 /* Represents a single layer in the network. Note that the class will
 initialize the OMP threads to achieve maximum performance gain.*/
 template<unsigned INPUT, unsigned OUTPUT, class FloatingPoint = double>
@@ -37,26 +44,26 @@ public:
 /*Constructors and destructors. */
 public:
 
-	Layer(bool initialize)
+	Layer(WeightsInitialize initialize)
 		:mWeights(OUTPUT), mReverseWeights(INPUT)
 	{
 		Randomizer<> r;
 
 		AllocateMemory();
-		if (initialize)
+		if (initialize != NoWeightsInitialize)
 		{
 			for (int i = 0; i < OUTPUT; ++i)
 			{
 				FloatingPoint* pRow = mWeights.GetRow(i);
 				for (int j = 0; j < INPUT; ++j)
 				{ 
-					pRow[j] = GetRandomWeight(r, OUTPUT + 1);
+					pRow[j] = GetRandomWeight(r, OUTPUT + 1, initialize);
 				}
 			}
 			for (int i = 0; i < OUTPUT; ++i)
-				mB[i] = GetRandomWeight(r, OUTPUT + 1);
+				mB[i] = GetRandomWeight(r, OUTPUT + 1, initialize);
 			for (int i = 0; i < INPUT; ++i)
-				mC[i] = GetRandomWeight(r, INPUT + 1);
+				mC[i] = GetRandomWeight(r, INPUT + 1, initialize);
 			mReverseWeightsDirty = true;	
 		}
 	}
@@ -214,11 +221,12 @@ protected:
 	//Compile-time checks on the parameters
 	void ValidateTemplateParameters();
 
-	double GetRandomWeight(Randomizer<>& rand, double divider)
+	double GetRandomWeight(Randomizer<>& rand, double divider, WeightsInitialize how)
 	{
 		//TODO: Backpropagation works best if weights are set to values very close to 0.
 		//This is not the case for genetic algorithms. Consider passing an argument for these
-		double value = rand.RangeNext(6);
+		double range = (how == InitializeForGenetic) ? 6.0 : 1.0;
+		double value = rand.RangeNext(range);
 		if (value < 0.0001 && value > -0.0001)
 		{
 			value = _copysign(0.001, value);

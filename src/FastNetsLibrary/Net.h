@@ -33,9 +33,9 @@ private:
 
 /*Constructors and destructors */
 public:
-	Net():mInputLayer(true){}
+	Net(WeightsInitialize initialize):mInputLayer(initialize), mNext(initialize){}
 
-	Net(const char* szFile):mInputLayer(false)
+	Net(const char* szFile):mInputLayer(NoWeightsInitialize), mNext(NoWeightsInitialize)
 	{
 		File f(szFile, "rb");
 		ReadFromFile(f);
@@ -222,7 +222,7 @@ public:
 
 	typedef double FloatingPointType;
 public:
-	Net(){}
+	Net(WeightsInitialize initialize){}
 	Net(const char* szFile){}      
 	Net(const Net& first, const Net& second, Randomizer<>& rand){}
 	void WriteToFile(const char* szFile){}
@@ -246,7 +246,8 @@ public:
 			deltas[i] = localError*DerivativeFunction(input[i]);
 			error += localError*localError;
 		}
-		return error / Output;
+		error /= Output;
+		return error;
 	}
 };
 

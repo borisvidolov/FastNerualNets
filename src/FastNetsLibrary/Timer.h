@@ -19,11 +19,16 @@ protected:
 	ULONGLONG mStart;
 public:
 	Timer(){ mStart = GetTickCount64(); }
-	~Timer()
+
+	double Seconds() const 
 	{ 
 		ULONGLONG result = GetTickCount64() - mStart;
-		double seconds = result/1000.0;
-		printf("\nTook %.2fs\n", seconds);
+		return result/1000.0;
+	}
+
+	~Timer()
+	{ 
+		printf("\nTook %.2fs\n", Seconds());
 	}
 };
 }//Namespace FastNets

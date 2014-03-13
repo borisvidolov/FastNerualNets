@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "FloatingPoint.h"
+#include <iostream>
 
 //TODO: Add non-inline calculation methods here
 

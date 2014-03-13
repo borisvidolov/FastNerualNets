@@ -46,7 +46,7 @@ namespace FastNets
 			mpPopulation = new IndividualStorage[mMaxCount];
 			for (unsigned i = 0; i < mMaxCount; ++i)
 			{
-				mpPopulation[i].mpIndividual = new Individual();
+				mpPopulation[i].mpIndividual = new Individual(InitializeForBackProp);
 			}
 		}
 
@@ -172,6 +172,7 @@ namespace FastNets
 			delete [] pMatrices;
 		}
 
+		Individual& Best() { return *mpPopulation[0].mpIndividual; }
 	protected:
 
 	};

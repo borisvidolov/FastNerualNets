@@ -31,13 +31,13 @@ int _tmain(int argc, _TCHAR* argv[])
 		//Tests major scenarios:
 		//Layers:
 		cout << "Layer Constructor...";
-		Layer<9, 1> l1(true);
+		Layer<9, 1> l1(InitializeForGenetic);
 		cout << "Succeeded" << endl;
 
 		try
 		{
 			cout << "Layer Constructor with missing file...";
-			Layer<9, 1> l(false);
+			Layer<9, 1> l(NoWeightsInitialize);
 			l.ReadFromFile("missing file");
 			cout << "Failed";
 			return 1;
@@ -49,7 +49,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		cout << "Layer Write and read from file...";
 		l1.WriteToFile("foo");
-		Layer<9, 1> l2(false);
+		Layer<9, 1> l2(NoWeightsInitialize);
 		l2.ReadFromFile("foo");
 		remove("foo");
 		if (!l1.IsSame(l2))
@@ -58,8 +58,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		//Networks:
 		cout << "Network constructor...";
-		Net<8> dummy;
-		Net<input, Net<112, Net<112, Net<output>>>> n;
+		Net<8> dummy(InitializeForGenetic);
+		Net<input, Net<112, Net<112, Net<output>>>> n(InitializeForGenetic);
 		cout << "Succeeded." << endl;
 		
 		cout << "Network writing and reading...";
@@ -119,7 +119,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		{
 			cout << "Verifying merging of two nets...";
-			Net<5, Net<6, Net<3>>> nFirst, nSecond;
+			Net<5, Net<6, Net<3>>> nFirst(InitializeForGenetic), nSecond(InitializeForGenetic);
 			nFirst.ProcessInputFast(inputMatrix.GetRow(0), fastOutputMatrix.GetRow(0));
 			nSecond.ProcessInputFast(inputMatrix.GetRow(0), slowOutputMatrix.GetRow(0));
 			if (AreSame(slowOutputMatrix.GetRow(0), fastOutputMatrix.GetRow(0), nFirst.Output))
@@ -143,11 +143,11 @@ int _tmain(int argc, _TCHAR* argv[])
 				throw std::string("Should be different!");	
 			cout << "Succeeded." << endl;
 		}
-
+		
 		typedef Net<2, Net<2, Net<1>>> XorNetType;
 		double xorInput[] ={-1, -1,
 							-1, 1,
-								1, -1,
+							1, -1,
 								1, 1};
 		double xorExpected[] = { -0.5, 0.5, 0.5, -0.5 };
 		AlignedMatrix<2> xorInputMatrix(xorInput, 4);
@@ -177,20 +177,27 @@ int _tmain(int argc, _TCHAR* argv[])
 			cout << "Succeeded." << endl;
 		}
 		{
-			XorNetType net;
+			XorNetType net(InitializeForBackProp);
 			cout << "Test back propagataion...";
 			cout << endl;
 			double previousError = 1e10;
 			{
 				Timer t;
-				for (int i = 0; i < 10000; ++i)
+				int i = 0;
+				AlignedMatrix<1> xorOutputMatrix(4);
+				while(t.Seconds() < 3)
 				{
-					double error = net.BackPropagation(xorInputMatrix, xorExpectedMatrix, 0.01);
-					cout << "Iteration: " << i << "; Error: " << error << endl;
-					if (error > previousError)
-						throw std::string("Not improving");
+					double error = net.BackPropagation(xorInputMatrix, xorExpectedMatrix, 0.001);
+
+					if (!((++i) % 1000))
+					{
+						cout << "Iteration: " << i << "; Error: " << error << endl;
+					}
+					/*if (error > previousError)
+						throw std::string("Not improving");*/
 					previousError = error;
 				}
+				cout << "Iteration: " << i << "; Error: " << previousError << endl;
 			}
 
 			cout << "Succeeded." << endl;
