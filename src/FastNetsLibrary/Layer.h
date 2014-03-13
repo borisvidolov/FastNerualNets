@@ -21,7 +21,7 @@ class Layer
 protected:
 	
 	AlignedMatrix<INPUT, FloatingPoint>  mWeights;
-	AlignedMatrix<OUTPUT, FloatingPoint> mReverseWeights;
+	AlignedMatrix<OUTPUT, FloatingPoint> mReverseWeights;//TODO: Use as an optimization and for contrastive divergeance
 	FloatingPoint* mB;//Input Bias
 	FloatingPoint* mC;//Output Bias (for reverse calculation)
 
@@ -167,15 +167,36 @@ public:
 		}	
 	}
 
-	void CalculateBackPropagationError(const FloatingPointType* input, const FloatingPointType* outputError, FloatingPointType* inputError) const
+	void CalculateBackPropagationDeltas(const FloatingPointType* input, const FloatingPointType* outputDelta, FloatingPointType* inputDelta) const
 	{
-
-		throw std::string("Implement me");
+		#pragma omp parallel for
+		for (int i = 0; i < (int)INPUT; ++i)
+		{
+			double localDelta = 0;
+			for (unsigned j = 0; j < OUTPUT; ++j)
+			{
+				localDelta += mWeights.GetRow(j)[i];//TODO: Optimize with the reverse weights
+			}
+			localDelta *= DerivativeFunction(input[i]);
+			inputDelta[i] = localDelta;
+		}
 	}
 
-	void UpdateWeightsAndBiases(const FloatingPointType* input, const FloatingPointType* outputError, double learningRate)
+	void UpdateWeightsAndBiases(const FloatingPointType* input, const FloatingPointType* outputDelta, double learningRate)
 	{
-		throw std::string("Implement me");
+		#pragma omp parallel for
+		for (int i = 0; (int)i < OUTPUT; ++i)
+		{
+			FloatingPointType* pWeights = mWeights.GetRow(i);
+			double currentOutputDelta = outputDelta[i];
+			for (unsigned j = 0; j < INPUT; ++j)
+			{
+				(*pWeights) = (*pWeights) + learningRate*currentOutputDelta*input[j];
+				++pWeights;
+			}
+
+			mB[i] = mB[i] + learningRate*currentOutputDelta;
+		}
 		mReverseWeightsDirty = true;
 	}
 

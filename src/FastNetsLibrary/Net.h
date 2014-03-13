@@ -183,21 +183,21 @@ public:
 
 	//This method should be called only by the method above.
 	double BackPropagation(const FloatingPointType* input, const FloatingPointType* expected, 
-								 FloatingPointType* errors, double learningRate)
+								 FloatingPointType* deltas, double learningRate)
 	{
 		_CRT_ALIGN(32) FloatingPointType nextOutput[UpperNet::Input];
-		_CRT_ALIGN(32) FloatingPointType nextError[UpperNet::Input];
+		_CRT_ALIGN(32) FloatingPointType nextDelta[UpperNet::Input];
 		//Forward pass:
 		mInputLayer.ProcessInputFast(input, nextOutput);
 		//Continues the forward pass and comes back:
-		double outputError = mNext.BackPropagation(nextOutput, expected, nextError, learningRate);
+		double outputError = mNext.BackPropagation(nextOutput, expected, nextDelta, learningRate);
 		//Backward pass:
 		//Calculate the errors for the lower level, unless there is no lower one:
-		if (errors)
+		if (deltas)
 		{
-			mInputLayer.CalculateBackPropagationError(input, nextError, errors);
+			mInputLayer.CalculateBackPropagationDeltas(input, nextDelta, deltas);
 		}
-		mInputLayer.UpdateWeightsAndBiases(input, nextError, learningRate);
+		mInputLayer.UpdateWeightsAndBiases(input, nextDelta, learningRate);
 		return outputError;
 	}
 
@@ -235,7 +235,7 @@ public:
 	//Creates a random merge of the two parents. Used in genetic algorithms
 	void SetFromMergedParents(const Net& first, const Net& second, Randomizer<>& rand){}
 	double BackPropagation(const FloatingPointType* input, const FloatingPointType* expected, 
-								 FloatingPointType* errors, double learningRate)
+								 FloatingPointType* deltas, double learningRate)
 	{
 		//The input for the last, dummy layer is the actual output of the net:
 		//TODO: use AVX here:
@@ -243,7 +243,7 @@ public:
 		for (int i = 0; i < (int)Output; ++i)
 		{
 			double localError = expected[i] - input[i];
-			errors[i] = localError;
+			deltas[i] = localError*DerivativeFunction(input[i]);
 			error += localError*localError;
 		}
 		return error / Output;
