@@ -145,11 +145,21 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		
 		typedef Net<2, Net<2, Net<1>>> XorNetType;
+#ifdef TANH_OUTPUT
 		double xorInput[] ={-1, -1,
 							-1, 1,
 							1, -1,
 								1, 1};
 		double xorExpected[] = { -0.5, 0.5, 0.5, -0.5 };
+#elif defined(SIGMOID_OUTPUT)
+				double xorInput[] ={0, 0,
+									0, 1,
+									1, 0,
+									1, 1};
+		double xorExpected[] = { 0.2, 0.7, 0.7, 0.2 };
+#else
+	#error Fix it yourself :)
+#endif
 		AlignedMatrix<2> xorInputMatrix(xorInput, 4);
 		AlignedMatrix<1> xorExpectedMatrix(xorExpected, 4);
 		{
@@ -166,7 +176,7 @@ int _tmain(int argc, _TCHAR* argv[])
 #endif
 				for (unsigned i = 0; i < generations; ++i)
 				{
-					double error = population.Train(xorInputMatrix, xorExpectedMatrix, 0.1, true);
+					double error = population.Train(xorInputMatrix, xorExpectedMatrix, 0.01, true);
 					cout << "Iteration: " << i << "; Error: " << error << endl;
 					if (error > previousError)
 						throw std::string("Not improving");

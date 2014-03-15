@@ -28,6 +28,7 @@ class Layer
 protected:
 	
 	AlignedMatrix<INPUT, FloatingPoint>  mWeights;
+	AlignedMatrix<INPUT, FloatingPoint>*  mpDeltaWeights;//Temporary during training
 	AlignedMatrix<OUTPUT, FloatingPoint> mReverseWeights;//TODO: Use as an optimization and for contrastive divergeance
 	FloatingPoint* mB;//Input Bias
 	FloatingPoint* mC;//Output Bias (for reverse calculation)
@@ -45,7 +46,7 @@ public:
 public:
 
 	Layer(WeightsInitialize initialize)
-		:mWeights(OUTPUT), mReverseWeights(INPUT)
+		:mWeights(OUTPUT), mReverseWeights(INPUT), mpDeltaWeights(NULL)
 	{
 		Randomizer<> r;
 
@@ -66,11 +67,13 @@ public:
 				mC[i] = GetRandomWeight(r, INPUT + 1, initialize);
 			mReverseWeightsDirty = true;	
 		}
+
+		if 
 	}
 
 	//Creates a layer by merging the two:
 	Layer(const Layer& merge1, const Layer& merge2, Randomizer<>& r)
-		:mWeights(OUTPUT), mReverseWeights(INPUT)
+		:mWeights(OUTPUT), mReverseWeights(INPUT), mpDeltaWeights(NULL)
 	{
 		AllocateMemory();
 		Merge(merge1, merge2, r);
@@ -88,6 +91,8 @@ public:
 		_aligned_free(mB);
 		_aligned_free(mC);
 	}
+
+#error add methods for the delta weights momentum
 
 /*Public methods */
 public:

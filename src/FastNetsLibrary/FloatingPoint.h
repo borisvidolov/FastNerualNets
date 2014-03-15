@@ -4,7 +4,8 @@
 #include <string>
 #include <sstream>
 
-#define TANH_OUTPUT
+//#define TANH_OUTPUT
+#define SIGMOID_OUTPUT
 
 namespace FastNets
 {
@@ -35,7 +36,6 @@ namespace FastNets
 	double CalculateOutputError(const double* actualOutput, const double* expectedOutput, unsigned outputNum);
 
 #ifdef TANH_OUTPUT
-	//TODO: Create ifdefs or other mechanisms to allow for different output functions:
 	template <class T>
 	inline static T OutputFunction(T input)
 	{
@@ -50,8 +50,24 @@ namespace FastNets
 		return (1 - output)*(1 + output);
 	}
 
+#elif defined(SIGMOID_OUTPUT)
+
+		template <class T>
+	inline static T OutputFunction(T input)
+	{
+		//Hyperbolic tangent:
+		return 1/(1 + exp(-input));
+	}
+
+	/* calculates the derivative as a function of the regular output */
+	template <class T>
+	inline static T DerivativeFunction(T output)
+	{
+		return output*(1-output);
+	}
+
 #else
-	#error Only thah is implemented for now
+	#error Please add other output methods here
 #endif
 
 //Given an integer, returns the closest >= one that is 32 byte aligned.
