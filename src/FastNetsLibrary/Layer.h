@@ -29,7 +29,7 @@ protected:
 	
 	AlignedMatrix<INPUT, FloatingPoint>  mWeights;
 	AlignedMatrix<INPUT, FloatingPoint>*  mpDeltaWeights;//Temporary during training
-	AlignedMatrix<OUTPUT, FloatingPoint> mReverseWeights;//TODO: Use as an optimization and for contrastive divergeance
+	AlignedMatrix<OUTPUT, FloatingPoint> mReverseWeights;//TODO: Use as an optimization and for contrastive divergeance and backprop
 	FloatingPoint* mB;//Input Bias
 	FloatingPoint* mC;//Output Bias (for reverse calculation)
 
@@ -67,8 +67,6 @@ public:
 				mC[i] = GetRandomWeight(r, INPUT + 1, initialize);
 			mReverseWeightsDirty = true;	
 		}
-
-		if 
 	}
 
 	//Creates a layer by merging the two:
@@ -90,12 +88,13 @@ public:
 	{
 		_aligned_free(mB);
 		_aligned_free(mC);
+		if (mpDeltaWeights)
+			delete mpDeltaWeights;
 	}
-
-#error add methods for the delta weights momentum
 
 /*Public methods */
 public:
+
 	void WriteToFile(const char* szFile)
 	{
 		File f(szFile, "wb");
@@ -187,24 +186,48 @@ public:
 			double localDelta = 0;
 			for (unsigned j = 0; j < OUTPUT; ++j)
 			{
-				localDelta += mWeights.GetRow(j)[i];//TODO: Optimize with the reverse weights
+				localDelta += mWeights.GetRow(j)[i]*outputDelta[j];//TODO: Optimize with the reverse weights, if worth
 			}
 			localDelta *= DerivativeFunction(input[i]);
 			inputDelta[i] = localDelta;
 		}
 	}
 
+	AlignedMatrix<INPUT, FloatingPoint>& GetDeltaWeights()
+	{
+		if (!mpDeltaWeights)
+		{
+			mpDeltaWeights = new AlignedMatrix<INPUT, FloatingPoint>(mWeights.NumRows());
+			#pragma omp parallel for
+			for (int i = 0; i < (int)mpDeltaWeights->NumRows(); ++i)
+			{
+				FloatingPointType* pWeights = mpDeltaWeights->GetRow(i);
+				for (unsigned j = 0; j < INPUT; ++j)
+				{
+					pWeights[j] = 0;
+				}
+			}
+		}
+		return *mpDeltaWeights;
+	}
+
 	void UpdateWeightsAndBiases(const FloatingPointType* input, const FloatingPointType* outputDelta, double learningRate)
 	{
+		AlignedMatrix<INPUT, FloatingPoint>& rPreviousDeltas = GetDeltaWeights();
 		#pragma omp parallel for
 		for (int i = 0; (int)i < OUTPUT; ++i)
 		{
 			FloatingPointType* pWeights = mWeights.GetRow(i);
+			FloatingPointType* pPreviousDelta = rPreviousDeltas.GetRow(i);
 			double currentOutputDelta = outputDelta[i];
 			for (unsigned j = 0; j < INPUT; ++j)
 			{
-				(*pWeights) = (*pWeights) + learningRate*currentOutputDelta*input[j];
+				//TODO: Make the momentum (m) adjustable:
+				double delta = 0.3*(*pPreviousDelta) + learningRate*currentOutputDelta*input[j];
+				(*pPreviousDelta) = delta;
+				(*pWeights) = (*pWeights) + delta;
 				++pWeights;
+				++pPreviousDelta;
 			}
 
 			mB[i] = mB[i] + learningRate*currentOutputDelta;
@@ -212,7 +235,28 @@ public:
 		mReverseWeightsDirty = true;
 	}
 
+	// Not very efficient, but checks boundaries:
+	FloatingPointType GetWeight(unsigned input, unsigned output) const
+	{
+		if (output >= OUTPUT) throw std::string("output parameter is too big");
+		if (input < INPUT) return mWeights.GetRow(output)[input];
+		if (input == INPUT) return mB[output];
+		throw std::string("input parameter is too big");
+	}
 
+	void PrintWeights() const
+	{
+	    for (unsigned i = 0; i < OUTPUT; ++i)
+		{
+			for (unsigned j = 0; j < INPUT; ++j)
+			{ 
+				printf("%2.3f ", GetWeight(j, i));
+			}
+			printf("%2.3f\n", mB[i]);
+		}
+		for (unsigned j = 0; j < INPUT; ++j) printf("-------");
+		printf("\n");
+	}
 
 /* Internal implementaiton */
 protected:

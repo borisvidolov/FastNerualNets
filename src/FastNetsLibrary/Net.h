@@ -201,6 +201,20 @@ public:
 		return outputError;
 	}
 
+	//Obtains the value of a specific connection. The method is not very efficient (e.g. the recursion can be 
+	//unrolled at compile time). It is provided for diagnostic purposes only. If performance here becomes an issue
+	//we will need to pass layer as a static parameter:
+	FloatingPointType GetWeightValue(unsigned layer, unsigned inputNeuronIndex, unsigned outputNeuronIndex) const 
+	{
+		if (layer) return mNext.GetWeightValue(layer - 1, inputNeuronIndex, outputNeuronIndex);
+		return mInputLayer.GetWeight(inputNeuronIndex, outputNeuronIndex);
+	}
+
+	void PrintWeights() const
+	{
+		mNext.PrintWeights();
+		mInputLayer.PrintWeights();
+	}
 protected:
 	template<unsigned first, unsigned second>
 	void EnsureSameSize(const AlignedMatrix<first, FloatingPointType>& input, const AlignedMatrix<second, FloatingPointType>& output) const
@@ -249,6 +263,7 @@ public:
 		error /= Output;
 		return error;
 	}
+	void PrintWeights() const {}
 };
 
 }//FastNets namespace

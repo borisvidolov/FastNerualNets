@@ -109,9 +109,19 @@ namespace FastNets
 					}
 					for (int k = 0; k < numChildren; ++k)
 					{
-						Individual& rToChange = *mpPopulation[currentPlace++].mpIndividual;
-						rToChange.SetFromMergedParents(*first.mpIndividual, *second.mpIndividual, rand);
-						rToChange.Mutate(mutationRate, rand);
+						if (currentPlace < mMaxCount)
+						{
+							Individual& rToChange = *mpPopulation[currentPlace++].mpIndividual;
+							rToChange.SetFromMergedParents(*first.mpIndividual, *second.mpIndividual, rand);
+							rToChange.Mutate(mutationRate, rand);
+						}
+						else
+						{
+							// It may never reach here. However, if we are here, the delta is so small
+							// that we are loosing too much precision to determine how many children each
+							// individual should have.
+							throw std::string("Trained - the delta between Individual objects is neglectible.");
+						}
 					}
 				}
 			}

@@ -15,7 +15,7 @@ namespace FastNets
 	{
 		unsigned mMax;
 		boost::mt11213b mGen;
-		Distribution mDist;	
+		Distribution mDist;
 	private:
 		Randomizer(const Randomizer&){}//No copy
 	public:
@@ -23,8 +23,15 @@ namespace FastNets
 		//good enough, as many of the calculations happen between less than 1 second
 		//intervals.
 		Randomizer(unsigned max = 10000)
-			:mMax(max), mDist(1, max), mGen((uint32_t)__rdtsc())
+			:mMax(max), mDist(1, max) 
+#ifndef FIXED_RANDOM
+			, mGen((uint32_t)__rdtsc())
+#endif
 		{
+#ifdef FIXED_RANDOM
+			static int seed;
+			mGen.seed(++seed);
+#endif
 		}
 		unsigned Max() const { return mMax; }
 

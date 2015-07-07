@@ -5,12 +5,16 @@
 #include "stdafx.h"
 #include <stdio.h>
 #include <iostream>
+#define FIXED_RANDOM
 #include "..\FastNetsLibrary\Net.h"
 #include "..\FastNetsLibrary\Timer.h"
 #include "..\FastNetsLibrary\Genetic.h"
 
 using namespace FastNets;
 using namespace std;
+
+#define TEST_PERF
+#define TEST_GENETIC
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -70,6 +74,8 @@ int _tmain(int argc, _TCHAR* argv[])
 			throw std::string("The networks are different.");
 
 		cout << "Succeeded." << endl;
+
+#ifdef TEST_PERF
 		int alignedInput = AVXAlign<double>(input);
 		for (unsigned j = 0; j < iterations; ++j)
 		{
@@ -106,6 +112,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		if (!slowOutputMatrix.IsSame(fastOutputMatrix))
 			throw std::string("Different results");
 		cout << "Succeeded." << endl;
+#endif
 
 		{
 			cout << "Test randomizer...";
@@ -143,25 +150,28 @@ int _tmain(int argc, _TCHAR* argv[])
 				throw std::string("Should be different!");	
 			cout << "Succeeded." << endl;
 		}
-		
+		cout << "Press enter to continue";
+		_gettchar();
+	
 		typedef Net<2, Net<2, Net<1>>> XorNetType;
 #ifdef TANH_OUTPUT
-		double xorInput[] ={-1, -1,
-							-1, 1,
-							1, -1,
-								1, 1};
-		double xorExpected[] = { -0.5, 0.5, 0.5, -0.5 };
+		double testInput[] ={-1, -1,
+							 -1, 1,
+							  1, -1,
+							  1, 1};
+		double testExpected[] = { -0.5, 0.5, 0.5, -0.5 };
 #elif defined(SIGMOID_OUTPUT)
-				double xorInput[] ={0, 0,
-									0, 1,
-									1, 0,
-									1, 1};
-		double xorExpected[] = { 0.2, 0.7, 0.7, 0.2 };
+		double testInput[] ={0, 0,
+							 0, 1,
+							 1, 0,
+							 1, 1};
+		double testExpected[] = { 0, 1, 1, 0 };
 #else
 	#error Fix it yourself :)
 #endif
-		AlignedMatrix<2> xorInputMatrix(xorInput, 4);
-		AlignedMatrix<1> xorExpectedMatrix(xorExpected, 4);
+		AlignedMatrix<2> xorInputMatrix(testInput, _countof(testExpected));
+		AlignedMatrix<1> xorExpectedMatrix(testExpected, _countof(testExpected));
+#ifdef TEST_GENETIC
 		{
 			cout << "Test genetic algos...";
 			Population<XorNetType> population(10000, 0.01);
@@ -169,14 +179,14 @@ int _tmain(int argc, _TCHAR* argv[])
 			double previousError = 1e10;
 			{
 				Timer t;
-#ifdef NDEBUG
+#  ifdef NDEBUG
 				const unsigned generations = 100;
-#else
-				const unsigned generations = 1;
-#endif
-				for (unsigned i = 0; i < generations; ++i)
+#  else
+				const unsigned generations = 100;
+#  endif
+				for (unsigned i = 0; i < generations && previousError > 1e-4; ++i)
 				{
-					double error = population.Train(xorInputMatrix, xorExpectedMatrix, 0.01, true);
+					double error = population.Train(xorInputMatrix, xorExpectedMatrix, 0.3, true);
 					cout << "Iteration: " << i << "; Error: " << error << endl;
 					if (error > previousError)
 						throw std::string("Not improving");
@@ -186,22 +196,28 @@ int _tmain(int argc, _TCHAR* argv[])
 
 			cout << "Succeeded." << endl;
 		}
+		cout << "Press enter to continue";
+		_gettchar();
+#endif
 		{
 			XorNetType net(InitializeForBackProp);
 			cout << "Test back propagataion...";
 			cout << endl;
+			net.PrintWeights();
 			double previousError = 1e10;
 			{
 				Timer t;
 				int i = 0;
-				AlignedMatrix<1> xorOutputMatrix(4);
-				while(t.Seconds() < 3)
+				AlignedMatrix<1> xorOutputMatrix(_countof(testExpected));
+				while(t.Seconds() < 300 && previousError > 1e-4)
 				{
-					double error = net.BackPropagation(xorInputMatrix, xorExpectedMatrix, 0.001);
-
+					double error = net.BackPropagation(xorInputMatrix, xorExpectedMatrix, 0.3);
+					//net.PrintWeights();
+					//_gettchar();
 					if (!((++i) % 1000))
 					{
 						cout << "Iteration: " << i << "; Error: " << error << endl;
+						//net.PrintWeights();
 					}
 					/*if (error > previousError)
 						throw std::string("Not improving");*/
